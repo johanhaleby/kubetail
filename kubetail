@@ -1,5 +1,52 @@
 #!/bin/bash
 
+readonly PROGNAME=$(basename $0)
+
+pod="${1}"
+container=""
+
+usage="${PROGNAME} [-h] [-c] -- tail multiple Kubernets pod logs at the same time
+
+where:
+    -h, --help
+        Show this help text
+    -c, --container=The name of the container to tail in the pod (if multiple containers are defined in the pod)
+        Default is none
+examples:
+    ${PROGNAME} my-pod-v1
+    ${PROGNAME} my-pod-v1 -c my-container"
+
+if [ $# -eq 0 ]; then
+  echo "$usage"
+  exit 1    
+fi
+
+if [ "$#" -ne 0 ]; then
+    while [ "$#" -gt 0 ]
+    do
+        case "$1" in
+        -h|--help)
+            echo "$usage"
+            exit 0
+            ;;        
+        -c|--container)
+            container="$2"
+            ;;
+        --)
+            break
+            ;;
+        -*)
+            echo "Invalid option '$1'. Use --help to see the valid options" >&2
+            exit 1
+            ;;
+        # an option argument, continue
+        *)  ;;
+        esac
+        shift
+    done
+fi
+
+
 # Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
     # $1 is return variable name
@@ -11,7 +58,7 @@ function join() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --no-headers | grep "${1}" | sed 's/ .*//'`)
+matching_pods=(`kubectl get pods --no-headers | grep "${pod}" | sed 's/ .*//'`)
 if [ ${#matching_pods[@]} -eq 0 ]; then
     echo "No pods exists that matches ${1}"
     exit 1
@@ -23,7 +70,7 @@ fi
 pod_logs_commands=()
 for pod in ${matching_pods[@]}; 
 do 
-	pod_logs_commands+=("kubectl logs ${pod} -f"); 
+	pod_logs_commands+=("kubectl logs ${pod} ${container} -f"); 
 done
 
 # Join all log commands into one string seperated by " & "
