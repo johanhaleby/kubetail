@@ -26,6 +26,10 @@ my-demo-v5-yhren       1/1       Running   0          2h
 To tail the logs of the two "app2" pods in one go simply do:
 
 	$ kubetail app2
+	
+Or if the app is using multiple containers specify the container like this:
+
+	$ kubetail app2 container1
 
 ## Known issues
 
