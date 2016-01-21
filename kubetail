@@ -4,6 +4,7 @@ readonly PROGNAME=$(basename $0)
 
 pod="${1}"
 container=""
+since="10s"
 
 usage="${PROGNAME} [-h] [-c] -- tail multiple Kubernets pod logs at the same time
 
@@ -12,6 +13,8 @@ where:
         Show this help text
     -c, --container=The name of the container to tail in the pod (if multiple containers are defined in the pod)
         Default is none
+    -s, --since=<time>
+        Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s. Only one of since-time / since may be used.
 examples:
     ${PROGNAME} my-pod-v1
     ${PROGNAME} my-pod-v1 -c my-container"
@@ -31,6 +34,9 @@ if [ "$#" -ne 0 ]; then
             ;;        
         -c|--container)
             container="$2"
+            ;;
+        -s|--since)
+            since="$2"
             ;;
         --)
             break
@@ -70,7 +76,7 @@ fi
 pod_logs_commands=()
 for pod in ${matching_pods[@]}; 
 do 
-	pod_logs_commands+=("kubectl logs ${pod} ${container} -f"); 
+	pod_logs_commands+=("kubectl logs ${pod} ${container} -f --since=${since}"); 
 done
 
 # Join all log commands into one string seperated by " & "
