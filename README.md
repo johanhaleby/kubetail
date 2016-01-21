@@ -29,7 +29,7 @@ To tail the logs of the two "app2" pods in one go simply do:
 	
 Or if the app is using multiple containers specify the container like this:
 
-	$ kubetail app2 container1
+	$ kubetail app2 -c container1
 
 Supply `-h` for help and addtional options:
 
