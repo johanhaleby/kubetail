@@ -31,7 +31,7 @@ Or if the app is using multiple containers specify the container like this:
 
 	$ kubetail app2 container1
 
-Supply `-h` for addtional options:
+Supply `-h` for help and addtional options:
 
 	$ kubetail -h
 	
