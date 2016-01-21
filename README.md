@@ -31,6 +31,10 @@ Or if the app is using multiple containers specify the container like this:
 
 	$ kubetail app2 container1
 
+Supply `-h` for addtional options:
+
+	$ kubetail -h
+	
 ## Known issues
 
 When you press "ctrl+c" to end the log session you may end up with errors like this:
