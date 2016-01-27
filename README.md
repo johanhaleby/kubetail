@@ -1,12 +1,12 @@
 # Kubetail
 
-This script allows you to aggregate (tail/follow) logs from multiple pods into one stream. 
+This script allows you to aggregate (tail/follow) logs from multiple pods into one stream.
 This is the same as running "kubectl logs -f <pod>" but for multiple pods.
 
 ## Usage
 
 First find the names of all your pods:
-	
+
 	$ kubectl get pods
 
 This will return a list looking something like this:
@@ -26,7 +26,7 @@ my-demo-v5-yhren       1/1       Running   0          2h
 To tail the logs of the two "app2" pods in one go simply do:
 
 	$ kubetail app2
-	
+
 Or if the app is using multiple containers specify the container like this:
 
 	$ kubetail app2 -c container1
@@ -34,7 +34,7 @@ Or if the app is using multiple containers specify the container like this:
 Supply `-h` for help and addtional options:
 
 	$ kubetail -h
-	
+
 ## Known issues
 
 When you press "ctrl+c" to end the log session you may end up with errors like this:
@@ -44,3 +44,5 @@ error: write /dev/stdout: broken pipe
 ```
 
 I'm not quite sure why this happens, pull requests are welcome :)
+
+See also See also: http://code.haleby.se/2015/11/13/tail-logs-from-multiple-pods-simultaneously-in-kubernetes/
