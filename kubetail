@@ -68,8 +68,6 @@ function join() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-echo $(kubectl get pods --context=${context} --no-headers | grep ${pod} | awk '{print $1}')
-#matching_pods=$(kubectl get pods --context=${context} --no-headers | grep ${pod} | awk '{print $1}')
 matching_pods=(`kubectl get pods --context=${context} --no-headers | grep "${pod}" | sed 's/ .*//'`)
 
 if [ ${#matching_pods[@]} -eq 0 ]; then
