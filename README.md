@@ -45,4 +45,4 @@ error: write /dev/stdout: broken pipe
 
 I'm not quite sure why this happens, pull requests are welcome :)
 
-See also See also: http://code.haleby.se/2015/11/13/tail-logs-from-multiple-pods-simultaneously-in-kubernetes/
+See also: http://code.haleby.se/2015/11/13/tail-logs-from-multiple-pods-simultaneously-in-kubernetes/
