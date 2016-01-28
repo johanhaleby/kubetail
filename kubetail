@@ -57,9 +57,6 @@ if [ "$#" -ne 0 ]; then
     done
 fi
 
-echo "CONTAINER: ${container}"
-echo "CONTEXT: ${context}"
-
 # Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
 	# $1 is return variable name
@@ -74,8 +71,6 @@ function join() {
 echo $(kubectl get pods --context=${context} --no-headers | grep ${pod} | awk '{print $1}')
 #matching_pods=$(kubectl get pods --context=${context} --no-headers | grep ${pod} | awk '{print $1}')
 matching_pods=(`kubectl get pods --context=${context} --no-headers | grep "${pod}" | sed 's/ .*//'`)
-
-echo "matching_pods: ${#matching_pods[@]}"
 
 if [ ${#matching_pods[@]} -eq 0 ]; then
 	echo "No pods exists that matches ${1}"
