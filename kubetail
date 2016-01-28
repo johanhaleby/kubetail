@@ -13,15 +13,20 @@ where:
         Show this help text
     -c, --container=The name of the container to tail in the pod (if multiple containers are defined in the pod)
         Default is none
+    -t, --context=The kubernetes context. Relies on ~/.kube/config for the contexts.
     -s, --since=<time>
         Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s. Only one of since-time / since may be used.
 examples:
     ${PROGNAME} my-pod-v1
-    ${PROGNAME} my-pod-v1 -c my-container"
+    ${PROGNAME} my-pod-v1 -c my-container
+    ${PROGNAME} my-pod-v1 -t int1-context -c my-container"
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
 
 if [ $# -eq 0 ]; then
   echo "$usage"
-  exit 1    
+  exit 1
 fi
 
 if [ "$#" -ne 0 ]; then
@@ -31,9 +36,12 @@ if [ "$#" -ne 0 ]; then
         -h|--help)
             echo "$usage"
             exit 0
-            ;;        
+            ;;
         -c|--container)
             container="$2"
+            ;;
+        -t|--context)
+            context="$2"
             ;;
         -s|--since)
             since="$2"
@@ -52,7 +60,6 @@ if [ "$#" -ne 0 ]; then
     done
 fi
 
-
 # Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
     # $1 is return variable name
@@ -63,8 +70,14 @@ function join() {
     printf -v "$retname" "%s" "$ret${@/#/$sep}"
 }
 
+function ctrl_c() {
+  echo "Killing kubectl"
+  killall -9 kubectl
+}
+
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --no-headers | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=(`kubectl get pods --context=${context} --no-headers | grep "${pod}" | sed 's/ .*//'`)
+
 if [ ${#matching_pods[@]} -eq 0 ]; then
     echo "No pods exists that matches ${1}"
     exit 1
@@ -74,9 +87,9 @@ fi
 
 # Wrap all pod names in the "kubectl logs <name> -f" command
 pod_logs_commands=()
-for pod in ${matching_pods[@]}; 
-do 
-	pod_logs_commands+=("kubectl logs ${pod} ${container} -f --since=${since}"); 
+for pod in ${matching_pods[@]};
+do
+	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since}")
 done
 
 # Join all log commands into one string seperated by " & "
