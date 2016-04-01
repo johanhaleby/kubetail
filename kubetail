@@ -4,6 +4,7 @@ readonly PROGNAME=$(basename $0)
 
 pod="${1}"
 container=""
+selector=""
 since="10s"
 
 usage="${PROGNAME} [-h] [-c] -- tail multiple Kubernets pod logs at the same time
@@ -11,15 +12,17 @@ usage="${PROGNAME} [-h] [-c] -- tail multiple Kubernets pod logs at the same tim
 where:
     -h, --help
         Show this help text
-    -c, --container=The name of the container to tail in the pod (if multiple containers are defined in the pod)
+    -c, --container: The name of the container to tail in the pod (if multiple containers are defined in the pod)
         Default is none
-    -t, --context=The kubernetes context. Relies on ~/.kube/config for the contexts.
-    -s, --since=<time>
-        Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s. Only one of since-time / since may be used.
+    -t, --context: The kubernetes context. Relies on ~/.kube/config for the contexts.
+    -l, --selector: Label selector. If used the pod name is ignored.
+    -s, --since: Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
 examples:
     ${PROGNAME} my-pod-v1
     ${PROGNAME} my-pod-v1 -c my-container
-    ${PROGNAME} my-pod-v1 -t int1-context -c my-container"
+    ${PROGNAME} my-pod-v1 -t int1-context -c my-container
+    ${PROGNAME} -l service=my-service
+    ${PROGNAME} -l role=db --since 10m"
 
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
@@ -45,6 +48,10 @@ if [ "$#" -ne 0 ]; then
             ;;
         -s|--since)
             since="$2"
+            ;;
+        -l|--selector)
+            selector="--selector $2"
+            pod=""
             ;;
         --)
             break
@@ -76,7 +83,7 @@ function ctrl_c() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} | grep "${pod}" | sed 's/ .*//'`)
 
 if [ ${#matching_pods[@]} -eq 0 ]; then
     echo "No pods exists that matches ${1}"
