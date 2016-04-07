@@ -2,10 +2,12 @@
 
 readonly PROGNAME=$(basename $0)
 
+default_since="10s"
+
 pod="${1}"
 container=""
 selector=""
-since="0"
+since="${default_since}"
 
 usage="${PROGNAME} [-h] [-c] -- tail multiple Kubernetes pod logs at the same time
 
@@ -48,7 +50,7 @@ if [ "$#" -ne 0 ]; then
             ;;
 		-s|--since)
 			if [ -z "$2" ]; then
-				since="10s"
+				since="${default_since}"
 			else
 				since="$2"
 			fi
