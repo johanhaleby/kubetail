@@ -10,13 +10,14 @@ container=""
 selector=""
 since="${default_since}"
 
-usage="${PROGNAME} [-h] [-c] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help       Show this help text
     -c, --container  The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
     -t, --context    The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector   Label selector. If used the pod name is ignored.
+    -n, --namespace  The Kubernetes namespace where the pods are located (defaults to "default")
     -s, --since      Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
 
 examples:
