@@ -3,6 +3,7 @@
 readonly PROGNAME=$(basename $0)
 
 default_since="10s"
+default_namespace="default"
 
 pod="${1}"
 container=""
@@ -55,6 +56,13 @@ if [ "$#" -ne 0 ]; then
 				since="$2"
 			fi
 			;;
+		-n|--namespace)
+			if [ -z "$2" ]; then
+				namespace="${default_namespace}"
+			else
+				namespace="$2"
+			fi
+			;;
 		--)
 			break
 			;;
@@ -80,7 +88,7 @@ function join() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
 
 if [ ${#matching_pods[@]} -eq 0 ]; then
 	echo "No pods exists that matches ${1}"
@@ -93,7 +101,7 @@ fi
 pod_logs_commands=()
 for pod in ${matching_pods[@]};
 do
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since}");
+	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace}");
 done
 
 # Join all log commands into one string seperated by " & "
