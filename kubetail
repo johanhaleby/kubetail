@@ -109,4 +109,4 @@ done
 join command_to_tail " & " "${pod_logs_commands[@]}"
 
 # Aggreate all logs and print to stdout
-cat <( eval "${command_to_tail}" ) | grep - --line-buffered
+eval "${command_to_tail}" | less
