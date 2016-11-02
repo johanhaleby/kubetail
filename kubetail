@@ -4,6 +4,8 @@ readonly PROGNAME=$(basename $0)
 
 default_since="10s"
 default_namespace="default"
+default_line_buffered="| grep - --line-buffered"
+line_buffered="${default_line_buffered}"
 
 pod="${1}"
 container=""
@@ -13,12 +15,13 @@ since="${default_since}"
 usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
 
 where:
-    -h, --help       Show this help text
-    -c, --container  The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
-    -t, --context    The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
-    -l, --selector   Label selector. If used the pod name is ignored.
-    -n, --namespace  The Kubernetes namespace where the pods are located (defaults to "default")
-    -s, --since      Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+    -h, --help       	Show this help text
+    -c, --container  	The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
+    -t, --context    	The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+    -l, --selector   	Label selector. If used the pod name is ignored.
+    -n, --namespace  	The Kubernetes namespace where the pods are located (defaults to "default")
+    -s, --since      	Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+    -b, --line-buffered This flags indicates to use line-buffered. Defaults to true.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -62,6 +65,11 @@ if [ "$#" -ne 0 ]; then
 				namespace="${default_namespace}"
 			else
 				namespace="$2"
+			fi
+			;;
+		-b|--line-buffered)
+			if [ "$2" = "false" ]; then
+				line_buffered=""
 			fi
 			;;
 		--)
@@ -109,4 +117,5 @@ done
 join command_to_tail " & " "${pod_logs_commands[@]}"
 
 # Aggreate all logs and print to stdout
-cat <( eval "${command_to_tail}" ) | grep - --line-buffered
+CMD="cat <( eval "${command_to_tail}" ) $line_buffered"
+eval "$CMD"
