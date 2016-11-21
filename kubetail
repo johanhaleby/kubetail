@@ -126,7 +126,7 @@ for i in ${!matching_pods[@]};
 do
 	pod=${matching_pods[$i]}	
 
-	# Ignore changing color for first matching pod since it this color (0) is hard to read on a black background
+	# Ignore changing color for first matching pod since this color (0) is hard to read on a black background
 	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ] || [ $i -eq 0 ]; then
 		color_start=$(tput sgr0)
 	else 
