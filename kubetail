@@ -98,9 +98,10 @@ function join() {
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
 matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
+matching_pods_size=${#matching_pods[@]}
 
-if [ ${#matching_pods[@]} -eq 0 ]; then
-	echo "No pods exists that matches ${1}"
+if [ ${matching_pods_size} -eq 0 ]; then
+	echo "No pods exists that matches ${pod}"
 	exit 1
 else
 	echo "Will tail ${#matching_pods[@]} logs..."
@@ -113,12 +114,17 @@ pod_logs_commands=()
 for i in ${!matching_pods[@]};
 do
 	pod=${matching_pods[$i]}
-  color_start=$(tput setaf $i)
 
-  # Preview pod colors
-  echo "$color_start$pod$color_end"
+	if [ ${matching_pods_size} -eq 1 ]; then
+		color_start=$(tput sgr0)
+	else 
+		color_start=$(tput setaf $i)
+	fi  
 
-  pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start[\$pod] \$line$color_end\"; done");
+	# Preview pod colors
+	echo "$color_start$pod$color_end"
+
+	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start[\$pod] \$line$color_end\"; done");
 done
 
 # Join all log commands into one string seperated by " & "
