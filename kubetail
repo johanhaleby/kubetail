@@ -5,7 +5,10 @@ readonly PROGNAME=$(basename $0)
 default_since="10s"
 default_namespace="default"
 default_line_buffered=""
+default_colored_output="true"
+
 line_buffered="${default_line_buffered}"
+colored_output="${default_colored_output}"
 
 pod="${1}"
 container=""
@@ -15,13 +18,14 @@ since="${default_since}"
 usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
 
 where:
-    -h, --help       	Show this help text
-    -c, --container  	The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
-    -t, --context    	The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
-    -l, --selector   	Label selector. If used the pod name is ignored.
-    -n, --namespace  	The Kubernetes namespace where the pods are located (defaults to "default")
-    -s, --since      	Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
-    -b, --line-buffered This flags indicates to use line-buffered. Defaults to false.
+    -h, --help       	 Show this help text
+    -c, --container  	 The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
+    -t, --context    	 The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+    -l, --selector   	 Label selector. If used the pod name is ignored.
+    -n, --namespace  	 The Kubernetes namespace where the pods are located (defaults to "default")
+    -s, --since      	 Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+    -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
+    -k, --colored-output Use colored output. Defaults to true.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -72,6 +76,13 @@ if [ "$#" -ne 0 ]; then
 				line_buffered="| grep - --line-buffered"
 			fi
 			;;
+		-k|--colored-output)
+			if [ -z "$2" ]; then
+				colored_output="${default_colored_output}"
+			else
+				colored_output="$2"
+			fi
+			;;
 		--)
 			break
 			;;
@@ -113,9 +124,9 @@ color_end=$(tput sgr0)
 pod_logs_commands=()
 for i in ${!matching_pods[@]};
 do
-	pod=${matching_pods[$i]}
+	pod=${matching_pods[$i]}	
 
-	if [ ${matching_pods_size} -eq 1 ]; then
+	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
 		color_start=$(tput sgr0)
 	else 
 		color_start=$(tput setaf $i)
