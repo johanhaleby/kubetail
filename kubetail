@@ -129,7 +129,8 @@ do
 	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
 		color_start=$(tput sgr0)
 	else 
-		color_start=$(tput setaf $i)
+		# Increase color by 1 since first color is blackish which is hard to read with black background
+		color_start=$(tput setaf $((i+1))) 
 	fi  
 
 	# Preview pod colors
