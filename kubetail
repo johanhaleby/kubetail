@@ -106,11 +106,19 @@ else
 	echo "Will tail ${#matching_pods[@]} logs..."
 fi
 
+color_end=$(tput sgr0)
+
 # Wrap all pod names in the "kubectl logs <name> -f" command
 pod_logs_commands=()
-for pod in ${matching_pods[@]};
+for i in ${!matching_pods[@]};
 do
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace}");
+	pod=${matching_pods[$i]}
+  color_start=$(tput setaf $i)
+
+  # Preview pod colors
+  echo "$color_start$pod$color_end"
+
+  pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start\$line$color_end\"; done");
 done
 
 # Join all log commands into one string seperated by " & "
