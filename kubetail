@@ -118,7 +118,7 @@ do
   # Preview pod colors
   echo "$color_start$pod$color_end"
 
-  pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start\$line$color_end\"; done");
+  pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start[\$pod] \$line$color_end\"; done");
 done
 
 # Join all log commands into one string seperated by " & "
