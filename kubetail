@@ -11,6 +11,7 @@ pod="${1}"
 container=""
 selector=""
 since="${default_since}"
+verbose=false
 
 usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
 
@@ -19,9 +20,10 @@ where:
     -c, --container  	The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
     -t, --context    	The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector   	Label selector. If used the pod name is ignored.
-    -n, --namespace  	The Kubernetes namespace where the pods are located (defaults to "default")
-    -s, --since      	Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+    -n, --namespace  	The Kubernetes namespace where the pods are located.
+    -s, --since      	Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to $default_since.
     -b, --line-buffered This flags indicates to use line-buffered. Defaults to true.
+    -v, --verbose       Show the names of the selected pods
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -49,10 +51,10 @@ if [ "$#" -ne 0 ]; then
 		-t|--context)
 			context="$2"
 			;;
-        -l|--selector)
-            selector="--selector $2"
-            pod=""
-            ;;
+		-l|--selector)
+			selector="$2" # --selector 'foo notin (bar, baz)'
+			pod=""
+			;;
 		-s|--since)
 			if [ -z "$2" ]; then
 				since="${default_since}"
@@ -71,6 +73,9 @@ if [ "$#" -ne 0 ]; then
 			if [ "$2" = "false" ]; then
 				line_buffered=""
 			fi
+			;;
+		-v|--verbose)
+			verbose=true
 			;;
 		--)
 			break
@@ -97,12 +102,13 @@ function join() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=( $( kubectl get pods --context=${context} --selector="${selector}" --namespace=${namespace} --no-headers | grep "${pod}" | sed 's/ .*//' | sort ) )
 
 if [ ${#matching_pods[@]} -eq 0 ]; then
-	echo "No pods exists that matches ${1}"
+	echo "No pods exists that match '${pod}'"
 	exit 1
 else
+	$verbose && echo "Matching pods: ${matching_pods[@]}"
 	echo "Will tail ${#matching_pods[@]} logs..."
 fi
 
@@ -127,3 +133,5 @@ join command_to_tail " & " "${pod_logs_commands[@]}"
 # Aggreate all logs and print to stdout
 CMD="cat <( eval "${command_to_tail}" ) $line_buffered"
 eval "$CMD"
+
+# vim: noexpandtab tabstop=4 shiftwidth=4
