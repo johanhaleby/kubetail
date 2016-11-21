@@ -4,7 +4,7 @@ readonly PROGNAME=$(basename $0)
 
 default_since="10s"
 default_namespace="default"
-default_line_buffered="| grep - --line-buffered"
+default_line_buffered=""
 line_buffered="${default_line_buffered}"
 
 pod="${1}"
@@ -21,7 +21,7 @@ where:
     -l, --selector   	Label selector. If used the pod name is ignored.
     -n, --namespace  	The Kubernetes namespace where the pods are located (defaults to "default")
     -s, --since      	Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
-    -b, --line-buffered This flags indicates to use line-buffered. Defaults to true.
+    -b, --line-buffered This flags indicates to use line-buffered. Defaults to false.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -68,8 +68,8 @@ if [ "$#" -ne 0 ]; then
 			fi
 			;;
 		-b|--line-buffered)
-			if [ "$2" = "false" ]; then
-				line_buffered=""
+			if [ "$2" = "true" ]; then
+				line_buffered="| grep - --line-buffered"
 			fi
 			;;
 		--)
