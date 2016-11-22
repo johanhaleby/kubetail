@@ -1,6 +1,6 @@
 # Kubetail
 
-This script allows you to aggregate (tail/follow) logs from multiple pods into one stream.
+Bash script allows you to aggregate (tail/follow) logs from multiple pods into one stream.
 This is the same as running "kubectl logs -f <pod>" but for multiple pods.
 
 ## Usage
