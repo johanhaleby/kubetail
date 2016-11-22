@@ -53,10 +53,10 @@ if [ "$#" -ne 0 ]; then
 		-t|--context)
 			context="$2"
 			;;
-        -l|--selector)
-            selector="--selector $2"
-            pod=""
-            ;;
+		-l|--selector)
+		    selector="--selector $2"
+		    pod=""
+		    ;;
 		-s|--since)
 			if [ -z "$2" ]; then
 				since="${default_since}"
