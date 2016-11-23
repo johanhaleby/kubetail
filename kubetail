@@ -5,7 +5,7 @@ readonly PROGNAME=$(basename $0)
 default_since="10s"
 default_namespace="default"
 default_line_buffered=""
-default_colored_output="true"
+default_colored_output="pod"
 
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
@@ -25,7 +25,9 @@ where:
     -n, --namespace  	 The Kubernetes namespace where the pods are located (defaults to "default")
     -s, --since      	 Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
-    -k, --colored-output Use colored output. Defaults to true.
+    -k, --colored-output Use colored output (pod|line|false). 
+			 pod = only color podname, line = color entire line, false = don't use any colors. 
+			 Defaults to pod.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -135,7 +137,13 @@ do
 	# Preview pod colors
 	echo "$color_start$pod$color_end"
 
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start[\$pod]$color_end \$line\"; done");
+	if [ ${colored_output} == "pod" ]; then 
+		colored_line="$color_start[\$pod]$color_end \$line"
+	else
+		colored_line="$color_start[\$pod] \$line $color_end"
+	fi
+
+	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
 done
 
 # Join all log commands into one string seperated by " & "
