@@ -126,17 +126,16 @@ for i in ${!matching_pods[@]};
 do
 	pod=${matching_pods[$i]}	
 
-	# Ignore changing color for first matching pod since this color (0) is hard to read on a black background
-	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ] || [ $i -eq 0 ]; then
+	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
 		color_start=$(tput sgr0)
 	else 
-		color_start=$(tput setaf $i) 
+		color_start=$(tput setaf $(($i+1))) 
 	fi  
 
 	# Preview pod colors
 	echo "$color_start$pod$color_end"
 
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start[\$pod] \$line$color_end\"; done");
+	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$color_start[\$pod]$color_end \$line\"; done");
 done
 
 # Join all log commands into one string seperated by " & "
