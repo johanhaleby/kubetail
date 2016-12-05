@@ -138,9 +138,9 @@ do
 	echo "$color_start$pod$color_end"
 
 	if [ ${colored_output} == "pod" ]; then 
-		colored_line="$color_start[\$pod]$color_end \$line"
+		colored_line="$color_start[$pod]$color_end \$line"
 	else
-		colored_line="$color_start[\$pod] \$line $color_end"
+		colored_line="$color_start[$pod] \$line $color_end"
 	fi
 
 	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
