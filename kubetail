@@ -2,7 +2,7 @@
 
 readonly PROGNAME=$(basename $0)
 
-default_since="10s"
+default_since="5m"
 default_namespace="default"
 default_line_buffered=""
 default_colored_output="pod"
@@ -10,145 +10,207 @@ default_colored_output="pod"
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 
-pod="${1}"
+pods=()
 container=""
 selector=""
 since="${default_since}"
 
-usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
+norun=
+verbose=
+
+usage() {
+ cat 1>&2 <<EOF
+${PROGNAME} [options] [PATTERN] -- tail multiple Kubernetes pod logs at the same time
+
+Select all pods with names matching PATTERN, or those matching the given options, and
+follow the logs for those pods.
 
 where:
-    -h, --help       	 Show this help text
-    -c, --container  	 The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
-    -t, --context    	 The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
-    -l, --selector   	 Label selector. If used the pod name is ignored.
-    -n, --namespace  	 The Kubernetes namespace where the pods are located (defaults to "default")
-    -s, --since      	 Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
-    -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
-    -k, --colored-output Use colored output (pod|line|false). 
-			 pod = only color podname, line = color entire line, false = don't use any colors. 
-			 Defaults to pod.
+  -h, --help                Show this help text
+  -c, --container NAME      The container name (if multiple containers are defined). Default is none
+  -t, --context NAME        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+  -l, --selector NAME       Label selector. If used the pod name is ignored.
+  -n, --namespace NAME      The Kubernetes namespace where the pods are located (defaults to 'default')
+  -s, --since WHEN          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+  -b, --line-buffered       Boolean indicating output should be line-buffered.
+  -k, --colored-output HOW  Use colored output (pod|line|false).
+                            pod = only color podname, line = color entire line, false = don't use any colors.
+                            Defaults to pod.
+  -v, --verbose             show the commands
+  -N, --norun               don't execute the commands, but show them
 
-examples:
-    ${PROGNAME} my-pod-v1
-    ${PROGNAME} my-pod-v1 -c my-container
-    ${PROGNAME} my-pod-v1 -t int1-context -c my-container
-    ${PROGNAME} -l service=my-service
-    ${PROGNAME} --selector service=my-service --since 10m"
+Examples:
+  ${PROGNAME} my-pod-v1
+  ${PROGNAME} my-pod-v1 -c my-container
+  ${PROGNAME} my-pod-v1 -t int1-context -c my-container
+  ${PROGNAME} -l service=my-service
+  ${PROGNAME} --selector service=my-service --since 10m
+EOF
+  exit
+}
 
-if [ $# -eq 0 ]; then
-	echo "$usage"
-	exit 1
-fi
+talkf() { printf 1>&2 "$@" ; }
+talk()  { printf 1>&2 "%s\n" "$*" ; }
+vtalk() { (( verbose )) && talk "$*" ; }
 
-if [ "$#" -ne 0 ]; then
-    while [ "$#" -gt 0 ]
-    do
-		case "$1" in
-		-h|--help)
-			echo "$usage"
-			exit 0
-			;;
-		-c|--container)
-			container="$2"
-			;;
-		-t|--context)
-			context="$2"
-			;;
-		-l|--selector)
-		        selector="--selector $2"
-		        pod=""
-		        ;;
-		-s|--since)
-			if [ -z "$2" ]; then
-				since="${default_since}"
-			else
-				since="$2"
-			fi
-			;;
-		-n|--namespace)
-			if [ -z "$2" ]; then
-				namespace="${default_namespace}"
-			else
-				namespace="$2"
-			fi
-			;;
-		-b|--line-buffered)
-			if [ "$2" = "true" ]; then
-				line_buffered="| grep - --line-buffered"
-			fi
-			;;
-		-k|--colored-output)
-			if [ -z "$2" ]; then
-				colored_output="${default_colored_output}"
-			else
-				colored_output="$2"
-			fi
-			;;
-		--)
-			break
-			;;
-		-*)
-			echo "Invalid option '$1'. Use --help to see the valid options" >&2
-			exit 1
-			;;
-		# an option argument, continue
-		*)  ;;
-		esac
-		shift
-    done
-fi
+error() {
+  talk "$*"
+  exit 1
+}
+
+run() {
+  if (( norun )); then
+    talk "(norun) $*"
+  else
+    vtalk "--> $*"
+    eval "$*"
+  fi
+}
+
+safe_run() {
+  if (( norun || verbose )); then
+    talk "--> $*"
+  fi
+  eval "$*"
+}
 
 # Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
-	# $1 is return variable name
-	# $2 is sep
-	# $3... are the elements to join
-	local retname=$1 sep=$2 ret=$3
-	shift 3 || shift $(($#))
-	printf -v "$retname" "%s" "$ret${@/#/$sep}"
+  # $1 is return variable name
+  # $2 is sep
+  # $3... are the elements to join
+  local retname=$1 sep=$2 ret=$3
+  shift 3 || shift $(($#))
+  printf -v "$retname" "%s" "$ret${@/#/$sep}"
 }
 
+echo_kubectl_option() {
+  local val
+  eval "val=\"\$$1\""
+  [[ -n "$val" ]] && printf " --%s=%s" "$1" "$val"
+}
+
+echo_kubectl_options() {
+  local opt
+  for opt in "$@" ; do
+    echo_kubectl_option $opt
+  done
+}
+
+echo_pod_context_and_namespace() {
+  echo_kubectl_options context namespace
+}
+
+echo_pod_options() {
+  echo_kubectl_options context selector namespace
+}
+
+get_all_pods() {
+  safe_run "kubectl get pods --no-headers `echo_pod_options`"
+}
+
+echo_pod_log_options() {
+  echo_kubectl_options context container since namespace
+}
+
+log_command_for_pod() {
+  echo "kubectl logs $1 `echo_pod_log_options` -f"
+}
+
+# color_line_for_pod POD LINE COLORSTART COLOREND
+
+color_line_for_pod() {
+  if [[ ${colored_output} == "pod" ]]; then
+    color_it "[$1]" "$3" "$4" " $2"
+  else
+    color_it "[$1] $2" "$3" "$4"
+  fi
+}
+
+# color_it TEXT COLORSTART COLOREND UNCOLOREDTEXT
+color_it() {
+  echo "${2}${1}${3}${4}"
+}
+
+# color_output POD STARTCOLOR ENDCOLOR
+color_output() {
+  local pod="$1" line
+  while read line ; do
+    color_line_for_pod "$pod" "$line" "$2" "$3"
+  done
+}
+
+select_pods() {
+  if (( ${#pods[*]} > 0 )) ; then
+    local pods_re=`echo "${pods[@]}" | tr ' ' '|'`
+    safe_run "egrep \"${pods_re}\" 2>/dev/null"
+  else
+    cat
+  fi
+}
+
+delete_from_blank() {
+  sed 's/ .*$//'
+}
+
+##################################################
+
+(( $# > 0 )) || usage
+
+while (( $# > 0 )) ; do
+  case "$1" in
+  -h|--help)           usage ;;
+  -c|--container)      container="$2" ; shift ;;
+  -t|--context)        context="$2"   ; shift ;;
+  -l|--selector)       selector="$2" pod="" ; shift ;;
+  -s|--since)          since="${2:-$default_since}" ; shift ;;
+  -n|--namespace)      namespace="${2:-$default_namespace}" ; shift ;;
+  -b|--line-buffered)  line_buffered="| grep - --line-buffered" ;;
+  -k|--colored-output) colored_output="${2:-$default_colored_output}" ; shift ;;
+  -N|--norun)          norun=1 ;;
+  -v|--verbose)        verbose=1 ;;
+  --) break ;;
+  -*) error "Invalid option '$1'. Use --help to see the valid options" ;;
+  *) pods+=( "$1" ) ;;
+  esac
+  shift
+done
+
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=( `get_all_pods | select_pods | delete_from_blank`)
 matching_pods_size=${#matching_pods[@]}
 
-if [ ${matching_pods_size} -eq 0 ]; then
-	echo "No pods exists that matches ${pod}"
-	exit 1
-else
-	echo "Will tail ${#matching_pods[@]} logs..."
+if (( matching_pods_size == 0 )) ; then
+  error "No pods exists that matches ${pod}"
 fi
 
-color_end=$(tput sgr0)
+talk "Will tail ${#matching_pods[@]} logs..."
+
+color_end=$( tput sgr0 )
 
 # Wrap all pod names in the "kubectl logs <name> -f" command
 pod_logs_commands=()
-for i in ${!matching_pods[@]};
-do
-	pod=${matching_pods[$i]}	
+for i in ${!matching_pods[@]} ; do
+  pod=${matching_pods[$i]}
 
-	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
-		color_start=$(tput sgr0)
-	else 
-		color_start=$(tput setaf $(($i+1))) 
-	fi  
+  if [[ "$matching_pods_size" -eq 1 || "$colored_output" == 'false' ]] ; then
+    color_start=$(tput sgr0)
+  else
+    color_start=$(tput setaf $(($i+1)))
+  fi
 
-	# Preview pod colors
-	echo "$color_start$pod$color_end"
+  # Preview pod colors
+  echo "$color_start$pod$color_end"
 
-	if [ ${colored_output} == "pod" ]; then 
-		colored_line="$color_start[$pod]$color_end \$line"
-	else
-		colored_line="$color_start[$pod] \$line $color_end"
-	fi
-
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
+  pod_logs_commands+=( "`log_command_for_pod $pod` | color_output '$pod' '$color_start' '$color_end'" )
 done
 
 # Join all log commands into one string seperated by " & "
 join command_to_tail " & " "${pod_logs_commands[@]}"
 
 # Aggreate all logs and print to stdout
-CMD="cat <( eval "${command_to_tail}" ) $line_buffered"
-eval "$CMD"
+run "cat <( eval \"${command_to_tail}\" ) $line_buffered"
+
+exit
+
+# vim: sw=2 ai
