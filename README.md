@@ -7,7 +7,7 @@ This is the same as running "kubectl logs -f <pod>" but for multiple pods.
 
 First find the names of all your pods:
 
-	$ kubectl get pods
+    $ kubectl get pods
 
 This will return a list looking something like this:
 
@@ -25,15 +25,24 @@ my-demo-v5-yhren       1/1       Running   0          2h
 
 To tail the logs of the two "app2" pods in one go simply do:
 
-	$ kubetail app2
+    $ kubetail app2
 
 If the pods are using multiple containers specify the container like this:
 
-	$ kubetail app2 -c container1
+    $ kubetail app2 -c container1
 
 Supply `-h` for help and addtional options:
 
-	$ kubetail -h
+    $ kubetail -h
+
+To see what commands are being generated to tail the logs, use the `-v` option:
+
+    $ kubetail -v myapp
+
+To see what commands _would_ be generated and used, without actually invoking 
+them, use the `-N` option:
+
+    $ kubetail -N myapp
 
 ## Known issues
 
