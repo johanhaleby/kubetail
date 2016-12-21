@@ -1,11 +1,31 @@
 # Kubetail
 
-Bash script that enables you to aggregate (tail/follow) logs from multiple pods into one stream.
-This is the same as running "kubectl logs -f <pod>" but for multiple pods.
+Bash script that enables you to aggregate (tail/follow) logs from multiple pods
+into one stream.  This is the same as running "kubectl logs -f <pod>" but for
+multiple pods.
+
+If available, this script will use `multitail`, an interactive, curses-based
+multi-pane log viewer, or it can manage the log viewing with a simple bash
+function.  Using `multitail`, each pod name can be automatically associated
+with a corresponding _colorscheme_ (using the pod "base" name) that controls
+the precise formatting and coloring of the viewed log files.
+
+See the included `multitail` configuration file `kube-multitail.conf`.
+
+## Installation
+
+Use `make` to install into reasonably standard places; edit the `Makefile` to
+adjust to your needs.
+
+    make install
+
+This will install the `kubetail` script and the `kube-multitail.conf` file, by
+default into `$HOME/bin/kubetail` and `$HOME/etc/kube-multitail.conf`,
+respectively.
 
 ## Usage
 
-First find the names of all your pods:
+To find the names of all your pods:
 
     $ kubectl get pods
 
@@ -43,6 +63,10 @@ To see what commands _would_ be generated and used, without actually invoking
 them, use the `-N` option:
 
     $ kubetail -N myapp
+
+To avoid using `multitail`, use the `-T` option:
+
+    $ multitail -T myapp
 
 ## Known issues
 
