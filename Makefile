@@ -21,8 +21,8 @@ install: $(program) $(conffile)
 $(bindir) $(etcdir):
 	mkdir -p $@
 
-$(program): kubetail Makefile
+$(program): $(bindir) kubetail Makefile
 	install -b kubetail $@
 
-$(conffile): $(conf_file_name) Makefile
+$(conffile): $(etcdir) $(conf_file_name) Makefile
 	install -b -m 0644 $(conf_file_name) $@
