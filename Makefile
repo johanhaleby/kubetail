@@ -1,19 +1,28 @@
 # Makefile for kubectl
 
-prog = kubetail
+prog_name      = kubetail
+conf_file_name = kube-multitail.conf
 
-bindir = /usr/local/bin
+bindir = $(HOME)/bin
+etcdir = $(HOME)/etc
 
-# uncomment if you want to install only into your home bin dir
-#bindir = $(HOME)/bin
+# uncomment if you want to install for multiple users
+#bindir = /usr/local/bin
+#etcdir = /usr/local/etc
+
+program  = $(bindir)/$(prog_name)
+conffile = $(etcdir)/$(conf_file_name)
 
 help:
-	@echo "You can use 'make install' to install kubetail into $(bindir)/$(prog)"
+	@echo "You can use 'make install' to install $(prog_name) and $(conf_file_name)"
 
-install: $(bindir)/$(prog)
+install: $(program) $(conffile)
 
-$(bindir):
+$(bindir) $(etcdir):
 	mkdir -p $@
 
-$(bindir)/$(prog): kubetail Makefile
+$(program): kubetail Makefile
 	install -b kubetail $@
+
+$(conffile): $(conf_file_name) Makefile
+	install -b -m 0644 $(conf_file_name) $@
