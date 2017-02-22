@@ -35,6 +35,13 @@ Supply `-h` for help and addtional options:
 
 	$ kubetail -h
 
+## Colors
+
+By default kubetail will colorize the entire line of each pod. You can change this to only include the pod name by adding `-k false`:
+
+	$ kubetail app2 -k false
+	
+	
 ## Advanced
 
 There's a [fork](https://github.com/aks/kubetail) of kubetail made by [Alan Stebbens](https://github.com/aks) that allows for richer configuration and using [multitail](https://www.vanheusden.com/multitail/) and [bash-lab](https://github.com/aks/bash-lib). If you find that kubetail is lacking in features it's a good idea to check this out (or add an issue to see if there's anything we can do to kubetail).
