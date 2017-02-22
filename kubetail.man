@@ -1,0 +1,145 @@
+.TH kubetail 1 "22 Feb 2017" "Version @@VERSION@@"
+.SH NAME
+kubetail \- tail multiple kubernetes pod logs at the same time
+.SH SYNOPSIS
+.B kubetail
+.B [
+.I options
+.B ] [
+.I PATTERN
+.B ]
+.SH DESCRIPTION
+Select all pods with names matching
+.IR PATTERN ,
+or those matching the given
+options, and follow the logs for those pods.  Unless
+.B -T
+is used, the output
+tail logs are managed by
+.BR multitail (1)
+(if it is available).  With
+.BR -T ,
+a simple bash function is used to process each line of output.
+.PP
+By default and if available,
+.B multitail
+is used, along with a configuration
+file that contains a color scheme.  The color scheme used for each pod log is
+the base pod name.  For example, if the pod name is
+.BR "princess-3127303711-tzk06" ,
+then the pod base name and color scheme is
+.BR 'princess' .
+The color scheme is
+used
+.I only
+if it is defined as a
+.I 'colorscheme'
+in the multitail configuration file.
+.PP
+The search path for the
+.I kube-multitail.conf
+file is a list of
+directories:
+.IR '.' ,
+.IR '$HOME' ,
+.IR '$HOME/etc' ,
+and
+.IR '/usr/local/etc' .
+The configuration filename may optionally be prefixed with a period
+.IR '.' .
+
+.SH OPTIONS
+
+.TP 2.5i
+.BR -h ", " --help
+Show this help text
+.TP
+.BR -c ", " "--container \fINAME\fR"
+The container name (if multiple containers are defined). Default is none
+.TP
+.BR -t ", " "--context \fINAME\fR"
+The kubernetes context name. Eg:
+.IR int1-context .
+Relies on
+.I ~/.kube/config
+for the contexts.
+.TP
+.BR -l ", " "--selector \fINAME\fR"
+Label selector. If used the pod name is ignored.
+.TP
+.BR -n ", " "--namespace \fINAME\fR"
+The Kubernetes namespace where the pods are located (defaults to
+.IR default )
+.TP
+.BR -s ", " "--since \fIWHEN\fR"
+Only return logs newer than a relative duration like
+.BR 5s , 2m ,
+or
+.BR 3h .
+Defaults to
+BR 10s .
+.TP
+.BR -b ", " --line-buffered
+Boolean indicating output should be line-buffered.
+.TP
+.BR -k ", " "--colored-output \fIHOW\fR"
+Use colored output:
+.BR pod ", " line ", "
+or
+.BR false .
+.TP
+.BR -C ", " "--colorscheme \fINAME\fR"
+use multitail colorschame NAME
+.TP
+.BR -G ", " --no-configfile
+do not load multitail config file
+.TP
+.BR -v ", " --verbose
+show the commands
+.TP
+.BR -N ", " --norun
+don't execute the commands, but show them
+.TP
+.BR -T ", " --not-multitail
+do not use
+.BR multitail.
+.PP
+When using
+.BR -k " (or " --colored-output ),
+the values have these meanings:
+.RS
+.IP \fBpod\fR
+only color podname
+.IP \fBline\fR
+color entire line
+.IP \fBfalse\fR
+don't use any colors.
+.RE
+.PP
+The default is
+.BR pod .
+
+.SH EXAMPLES
+
+.FT CW
+kubetail my-pod-v1
+.br
+kubetail my-pod-v1 -c my-container
+.br
+kubetail my-pod-v1 -t int1-context -c my-container
+.br
+kubetail -l service=my-service
+.br
+kubetail --selector service=my-service --since 10m
+.FT R
+
+.SH AUTHOR
+
+.BR "Johan Haleby" "\- original bash script"
+.br
+.BI "Alan Stebbens" " <aks@stebbens.org>"
+\- enhanced bash script with mulitail integration.
+
+.SH SEE ALSO
+
+.BR mulitail (1)

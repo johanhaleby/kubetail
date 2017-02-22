@@ -34,8 +34,8 @@ bash function is used to process each line of output.
 
 By default and if available, 'multitail' is used, along with a configuration
 file that contains a color scheme.  The color scheme used for each pod log is
-the base pod name.  For example, if the pod name is "princess-3127303711-tzk06", 
-then the pod base name and color scheme is 'princess'.  The color scheme is 
+the base pod name.  For example, if the pod name is "princess-3127303711-tzk06",
+then the pod base name and color scheme is 'princess'.  The color scheme is
 used *only* if it is defined as a 'colorscheme' in the multitail configuration file.
 
 The search path for the '$default_config_file_name' file is a list of
@@ -121,7 +121,7 @@ echo_pod_context_and_namespace() {
 }
 
 echo_pod_options() {
-  echo_kubectl_options context selector namespace
+  echo_kubectl_options context namespace selector
 }
 
 get_all_pods() {
@@ -135,7 +135,7 @@ echo_pod_log_options() {
 select_pods() {
   if (( ${#pods[*]} > 0 )) ; then
     local pods_re=`echo "${pods[@]}" | tr ' ' '|'`
-    safe_run "egrep \"${pods_re}\" 2>/dev/null"
+    safe_run "egrep -i \"${pods_re}.*running\" 2>/dev/null"
   else
     cat
   fi
@@ -200,7 +200,7 @@ multitail_config_file() {
 }
 
 declare -A color_codes
-color_names=( black red green yellow blue magenta cyan white )
+color_names=(   black       red       green       yellow       blue       magenta       cyan       white )
 color_codes=( ['black']=0 ['red']=1 ['green']=2 ['yellow']=3 ['blue']=4 ['magenta']=5 ['cyan']=6 ['white']=7 )
 color_index=1
 
@@ -224,7 +224,7 @@ set_next_color() {
 # color_line_for_pod POD LINE COLOR
 
 color_line_for_pod() {
-  if [[ ${colored_output} == "pod" ]]; then
+  if [[ "$colored_output" == "pod" ]]; then
     color_it "[$1]" "$3" " $2"
   else
     color_it "[$1] $2" "$3"

@@ -1,8 +1,8 @@
 # Kubetail
 
-Bash script that enables you to aggregate (tail/follow) logs from multiple pods
-into one stream.  This is the same as running "kubectl logs -f <pod>" but for
-multiple pods.
+A bash script that enables you to aggregate (tail/follow) logs from multiple
+pods into one stream.  This is the same as running "kubectl logs -f <pod>" but
+for multiple pods.
 
 If available, this script will use `multitail`, an interactive, curses-based
 multi-pane log viewer, or it can manage the log viewing with a simple bash
@@ -14,14 +14,15 @@ See the included `multitail` configuration file `kube-multitail.conf`.
 
 ## Installation
 
-Use `make` to install into reasonably standard places; edit the `Makefile` to
-adjust to your needs.
+Use `make` to install into reasonably standard places.  There are two targets:
 
-    make install
+    make install-home
+    make install-usr
 
-This will install the `kubetail` script and the `kube-multitail.conf` file, by
-default into `$HOME/bin/kubetail` and `$HOME/etc/kube-multitail.conf`,
-respectively.
+Both will install the `kubetail` script, the `kube-multitail.conf`
+configuration file, and the man page `kubetail.man` into the corresponding
+sub-directories: `bin`, `etc`, and `man`, with the directory root being either:
+`~` or `/usr/local`.
 
 ## Usage
 
@@ -76,6 +77,7 @@ When you press "ctrl+c" to end the log session you may end up with errors like t
 error: write /dev/stdout: broken pipe
 ```
 
-I'm not quite sure why this happens, pull requests are welcome :)
+This error is normal; it is the result of output pending from one or more log files
+being unread by the interrupted script.
 
 See also: http://code.haleby.se/2015/11/13/tail-logs-from-multiple-pods-simultaneously-in-kubernetes/
