@@ -37,7 +37,7 @@ Supply `-h` for help and addtional options:
 
 ## Advanced
 
-There's a [fork](https://github.com/aks/kubetail) of kubetail made by [Alan Stebbens](https://github.com/aks) that allows for richer configuration and using [multitail](https://www.vanheusden.com/multitail/). If you find that kubetail is lacking in features it's a good idea to check this out (or add an issue to see if there's anything we can do to kubetail).
+There's a [fork](https://github.com/aks/kubetail) of kubetail made by [Alan Stebbens](https://github.com/aks) that allows for richer configuration and using [multitail](https://www.vanheusden.com/multitail/) and [bash-lab](https://github.com/aks/bash-lib). If you find that kubetail is lacking in features it's a good idea to check this out (or add an issue to see if there's anything we can do to kubetail).
 
 Alan has been kind enough to provide a pull request but my current thinking is that I'd like kubetail to stay simple and small and not use any dependencies.
 
