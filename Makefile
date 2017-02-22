@@ -23,9 +23,9 @@ help:
 	@echo ''
 	@echo "Use -n to see the effects without doing it"
 
-.PHONY: install-files install-home install-usr
+.PHONY: install-files install-home install-usr clean
 
-install-files: $(program) $(conffile) $(manfile)
+install-files:: $(program) $(conffile) $(manfile)
 
 install-home::
 	$(MAKE) DEST_DIR=$(HOME) install-files
@@ -33,6 +33,8 @@ install-home::
 install-usr::
 	$(MAKE) DEST_DIR=/usr/local install-files
 
+clean::
+	rm -f $(man_file_name)
 
 $(bindir) $(etcdir) $(mandir):
 	mkdir -p $@
@@ -44,5 +46,5 @@ $(conffile): $(etcdir) $(conf_file_name) Makefile
 	install -b -m 0644 $(conf_file_name) $@
 
 $(manfile): $(mandir) $(man_source) VERSION Makefile
-	sed -Ee 's/@@VERSION@@/`cat VERSION`/g' <$(man_source) >$(man_file_name)
+	sed -Ee "s/@@VERSION@@/`cat VERSION`/g" <$(man_source) >$(man_file_name)
 	install -m 0644 $(man_file_name) $@
