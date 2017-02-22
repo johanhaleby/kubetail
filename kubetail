@@ -5,7 +5,7 @@ readonly PROGNAME=$(basename $0)
 default_since="10s"
 default_namespace="default"
 default_line_buffered=""
-default_colored_output="pod"
+default_colored_output="line"
 
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
@@ -27,7 +27,7 @@ where:
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -k, --colored-output Use colored output (pod|line|false). 
 			 pod = only color podname, line = color entire line, false = don't use any colors. 
-			 Defaults to pod.
+			 Defaults to line.
 
 examples:
     ${PROGNAME} my-pod-v1
