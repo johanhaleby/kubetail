@@ -1,154 +1,331 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 readonly PROGNAME=$(basename $0)
 
-default_since="10s"
+default_since="5m"
 default_namespace="default"
 default_line_buffered=""
 default_colored_output="pod"
 
+search_config_dirs=( . $HOME $HOME/etc /usr/local/etc )
+default_config_file_name='kube-multitail.conf'
+
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 
-pod="${1}"
+pods=()
 container=""
 selector=""
 since="${default_since}"
+not_multitail=
+no_multitail_config=
 
-usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
+norun=
+verbose=
 
-where:
-    -h, --help       	 Show this help text
-    -c, --container  	 The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
-    -t, --context    	 The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
-    -l, --selector   	 Label selector. If used the pod name is ignored.
-    -n, --namespace  	 The Kubernetes namespace where the pods are located (defaults to "default")
-    -s, --since      	 Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
-    -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
-    -k, --colored-output Use colored output (pod|line|false). 
-			 pod = only color podname, line = color entire line, false = don't use any colors. 
-			 Defaults to pod.
+usage() {
+ cat 1>&2 <<EOF
+${PROGNAME} [options] [PATTERN] -- tail multiple Kubernetes pod logs at the same time
 
-examples:
-    ${PROGNAME} my-pod-v1
-    ${PROGNAME} my-pod-v1 -c my-container
-    ${PROGNAME} my-pod-v1 -t int1-context -c my-container
-    ${PROGNAME} -l service=my-service
-    ${PROGNAME} --selector service=my-service --since 10m"
+Select all pods with names matching PATTERN, or those matching the given
+options, and follow the logs for those pods.  Unless -T is used, the output
+tail logs are managed by 'multitail' (if it is available).  With -T, a simple
+bash function is used to process each line of output.
 
-if [ $# -eq 0 ]; then
-	echo "$usage"
-	exit 1
-fi
+By default and if available, 'multitail' is used, along with a configuration
+file that contains a color scheme.  The color scheme used for each pod log is
+the base pod name.  For example, if the pod name is "princess-3127303711-tzk06", 
+then the pod base name and color scheme is 'princess'.  The color scheme is 
+used *only* if it is defined as a 'colorscheme' in the multitail configuration file.
 
-if [ "$#" -ne 0 ]; then
-    while [ "$#" -gt 0 ]
-    do
-		case "$1" in
-		-h|--help)
-			echo "$usage"
-			exit 0
-			;;
-		-c|--container)
-			container="$2"
-			;;
-		-t|--context)
-			context="$2"
-			;;
-		-l|--selector)
-		        selector="--selector $2"
-		        pod=""
-		        ;;
-		-s|--since)
-			if [ -z "$2" ]; then
-				since="${default_since}"
-			else
-				since="$2"
-			fi
-			;;
-		-n|--namespace)
-			if [ -z "$2" ]; then
-				namespace="${default_namespace}"
-			else
-				namespace="$2"
-			fi
-			;;
-		-b|--line-buffered)
-			if [ "$2" = "true" ]; then
-				line_buffered="| grep - --line-buffered"
-			fi
-			;;
-		-k|--colored-output)
-			if [ -z "$2" ]; then
-				colored_output="${default_colored_output}"
-			else
-				colored_output="$2"
-			fi
-			;;
-		--)
-			break
-			;;
-		-*)
-			echo "Invalid option '$1'. Use --help to see the valid options" >&2
-			exit 1
-			;;
-		# an option argument, continue
-		*)  ;;
-		esac
-		shift
-    done
-fi
+The search path for the '$default_config_file_name' file is a list of
+directories: '.', '\$HOME', '\$HOME/etc', and '/usr/local/etc'.  The
+configuration filename may optionally be prefixed with a period '.'.
+
+Options:
+  -h, --help                Show this help text
+  -c, --container NAME      The container name (if multiple containers are defined). Default is none
+  -t, --context NAME        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+  -l, --selector NAME       Label selector. If used the pod name is ignored.
+  -n, --namespace NAME      The Kubernetes namespace where the pods are located (defaults to 'default')
+  -s, --since WHEN          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+  -b, --line-buffered       Boolean indicating output should be line-buffered.
+  -k, --colored-output HOW  Use colored output (pod|line|false).
+                            pod = only color podname, line = color entire line, false = don't use any colors.
+                            Defaults to pod.
+  -C, --colorscheme NAME    use multitail colorschame NAME
+  -G, --no-configfile       do not load multitail config file
+  -v, --verbose             show the commands
+  -N, --norun               don't execute the commands, but show them
+  -T, --not-multitail       do not use 'multitail'
+
+Examples:
+  ${PROGNAME} my-pod-v1
+  ${PROGNAME} my-pod-v1 -c my-container
+  ${PROGNAME} my-pod-v1 -t int1-context -c my-container
+  ${PROGNAME} -l service=my-service
+  ${PROGNAME} --selector service=my-service --since 10m
+EOF
+  exit
+}
+
+# These are from github.com/aks/bash-lib
+talkf()  { printf 1>&2 "$@" ; }
+talk()   { printf 1>&2 "%s\n" "$*" ; }
+vtalk()  { (( verbose )) && talk  "$*" ; }
+vtalkf() { (( verbose )) && talkf "$@" ; }
+error()  { talk "$*" ; exit 1 ; }
+
+run() {
+  if (( norun )); then
+    talk "(norun) $*"
+  else
+    vtalk "--> $*"
+    eval "$*"
+  fi
+}
+
+safe_run() {
+  if (( norun || verbose )); then
+    talk "--> $*"
+  fi
+  eval "$*"
+}
+# end of bash-lib excerpt
 
 # Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
-	# $1 is return variable name
-	# $2 is sep
-	# $3... are the elements to join
-	local retname=$1 sep=$2 ret=$3
-	shift 3 || shift $(($#))
-	printf -v "$retname" "%s" "$ret${@/#/$sep}"
+  # $1 is return variable name
+  # $2 is sep
+  # $3... are the elements to join
+  local retname=$1 sep=$2 ret=$3
+  shift 3 || shift $(($#))
+  printf -v "$retname" "%s" "$ret${@/#/$sep}"
 }
 
-# Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
-matching_pods_size=${#matching_pods[@]}
+echo_kubectl_option() {
+  local val
+  eval "val=\"\$$1\""
+  [[ -n "$val" ]] && printf " --%s=%s" "$1" "$val"
+}
 
-if [ ${matching_pods_size} -eq 0 ]; then
-	echo "No pods exists that matches ${pod}"
-	exit 1
-else
-	echo "Will tail ${#matching_pods[@]} logs..."
+echo_kubectl_options() {
+  local opt
+  for opt in "$@" ; do
+    echo_kubectl_option $opt
+  done
+}
+
+echo_pod_context_and_namespace() {
+  echo_kubectl_options context namespace
+}
+
+echo_pod_options() {
+  echo_kubectl_options context selector namespace
+}
+
+get_all_pods() {
+  safe_run "kubectl get pods --no-headers `echo_pod_options`"
+}
+
+echo_pod_log_options() {
+  echo_kubectl_options context container since namespace
+}
+
+select_pods() {
+  if (( ${#pods[*]} > 0 )) ; then
+    local pods_re=`echo "${pods[@]}" | tr ' ' '|'`
+    safe_run "egrep \"${pods_re}\" 2>/dev/null"
+  else
+    cat
+  fi
+}
+
+delete_from_blank() {
+  sed 's/ .*$//'
+}
+
+log_command_for_pod() {
+  echo "kubectl logs $1 `echo_pod_log_options` -f"
+}
+
+# multitail_log_options_for_pod PODNAME COLOR
+
+multitail_log_options_for_pod() {
+  local opts="--label \"[$1] \""
+  local cscheme=`color_scheme_for_pod $1`
+  if [[ -n "$cscheme" ]] ; then
+    opts+=" -cS $cscheme"
+  else
+    opts+=" -ci $2"
+  fi
+  opts+=" -l '`log_command_for_pod $1`'"
+  printf "%s" "$opts"
+}
+
+color_scheme_for_pod() {
+  if [[ -n "$multitail_config_file" ]] ; then
+    local podbase="${1%%-*}"
+    if fgrep -q "colorscheme:$podbase" $multitail_config_file 2>/dev/null ; then
+        echo "$podbase"
+    fi
+  fi
+}
+
+maybe_search_for_multitail_config_file() {
+  if (( ! no_multitail_config )) ; then
+    if [[ -z "$multitail_config_file" || ! -r "$multitail_config_file" ]]; then
+      local dir cf cfpath
+      for dir in "${search_config_dirs[@]}" ; do
+        for cf in $default_config_file_name ".$default_config_file_name" ; do
+          cfpath="$dir/$cf"
+          if [[ -e "$cfpath" ]] ; then
+            vtalkf "Found config file: %s\n" "$cfpath"
+            multitail_config_file="$cfpath"
+            break 2
+          fi
+        done
+      done
+    fi
+  fi
+}
+
+# multitail_config_file
+multitail_config_file() {
+  if (( ! no_multitail_config )) ; then
+    if [[ -n "$multitail_config_file" && -e "$multitail_config_file" ]] ; then
+      echo "--config $multitail_config_file"
+    fi
+  fi
+}
+
+declare -A color_codes
+color_names=( black red green yellow blue magenta cyan white )
+color_codes=( ['black']=0 ['red']=1 ['green']=2 ['yellow']=3 ['blue']=4 ['magenta']=5 ['cyan']=6 ['white']=7 )
+color_index=1
+
+color_code() {
+  if (( $1 >= 0 && $1 <= 7 )); then
+    tput setaf ${color_codes[$1]:?'Bad color name'}
+  else
+    error "Bad color code!"
+  fi
+}
+
+# set_next_color -- set 'color' to the next color name, not includes white or
+# black
+
+set_next_color() {
+  color="${color_names[$color_index]}"
+  (( ++color_index ))
+  (( color_index > 6 )) && color_index=1
+}
+
+# color_line_for_pod POD LINE COLOR
+
+color_line_for_pod() {
+  if [[ ${colored_output} == "pod" ]]; then
+    color_it "[$1]" "$3" " $2"
+  else
+    color_it "[$1] $2" "$3"
+  fi
+}
+
+# color_it TEXT COLOR UNCOLOREDTEXT
+
+color_it() {
+  echo "`color_code $2`${1}${color_end}${3}"
+}
+
+# color_output POD COLOR
+color_output() {
+  local line
+  while read line ; do
+    color_line_for_pod "$1" "$line" "$2"
+  done
+}
+
+##################################################
+
+(( $# > 0 )) || usage
+
+while (( $# > 0 )) ; do
+  case "$1" in
+  -h|--help)           usage ;;
+  -c|--container)      container="$2" ; shift ;;
+  -t|--context)        context="$2"   ; shift ;;
+  -l|--selector)       selector="$2" pod="" ; shift ;;
+  -s|--since)          since="${2:-$default_since}" ; shift ;;
+  -n|--namespace)      namespace="${2:-$default_namespace}" ; shift ;;
+  -b|--line-buffered)  line_buffered="| grep - --line-buffered" ;;
+  -k|--colored-output) colored_output="${2:-$default_colored_output}" ; shift ;;
+  -N|--norun)          norun=1 ;;
+  -G|--no-config)      no_multitail_config=1 ;;
+  -T|--not-multitail)  not_multitail=1 ;;
+  -v|--verbose)        verbose=1 ;;
+  --) break ;;
+  -*) error "Invalid option '$1'. Use --help to see the valid options" ;;
+  *) pods+=( "$1" ) ;;
+  esac
+  shift
+done
+
+if (( ! not_multitail )) ; then
+  if [[ -n "`which multitail`" ]]; then
+    maybe_search_for_multitail_config_file
+    if [[ -n "$multitail_config_file" ]]; then
+      not_multitail=    # we *have* multitail
+      vtalk "Using: multitail --config $multitail_config_file"
+    fi
+  fi
+fi
+if (( not_multitail )) ; then
+  vtalk "Using: bash viewer"
 fi
 
-color_end=$(tput sgr0)
+# Get all pods matching the input and put them in an array. If no input then all pods are matched.
+matching_pods=( `get_all_pods | select_pods | delete_from_blank`)
+matching_pods_size=${#matching_pods[@]}
+
+if (( matching_pods_size == 0 )) ; then
+  error "No pods exists that matches ${pod}"
+fi
+
+talk "Will tail ${#matching_pods[@]} logs..."
+
+color_end=$( tput sgr0 )
 
 # Wrap all pod names in the "kubectl logs <name> -f" command
 pod_logs_commands=()
-for i in ${!matching_pods[@]};
-do
-	pod=${matching_pods[$i]}	
+for i in ${!matching_pods[@]} ; do
+  pod=${matching_pods[$i]}
 
-	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
-		color_start=$(tput sgr0)
-	else 
-		color_start=$(tput setaf $(($i+1))) 
-	fi  
+  if [[ "$matching_pods_size" -eq 1 || "$colored_output" == 'false' ]] ; then
+    color=
+  else
+    set_next_color
+  fi
 
-	# Preview pod colors
-	echo "$color_start$pod$color_end"
+  # Preview pod colors
+  color_it $pod $color
 
-	if [ ${colored_output} == "pod" ]; then 
-		colored_line="$color_start[$pod]$color_end \$line"
-	else
-		colored_line="$color_start[$pod] \$line $color_end"
-	fi
+  if (( not_multitail )); then
+    pod_logs_commands+=( "`log_command_for_pod $pod` | color_output $pod $color " )
+  else
+    pod_logs_commands+=( "`multitail_log_options_for_pod $pod $color`" )
+  fi
 
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
 done
 
 # Join all log commands into one string seperated by " & "
-join command_to_tail " & " "${pod_logs_commands[@]}"
+if (( not_multitail )); then
+  join command_to_tail " & " "${pod_logs_commands[@]}"
+  # Aggreate all logs and print to stdout
+  run "cat <( eval \"${command_to_tail}\" ) $line_buffered"
+else
+  run "multitail `multitail_config_file` --mergeall ${pod_logs_commands[@]}"
+fi
 
-# Aggreate all logs and print to stdout
-CMD="cat <( eval "${command_to_tail}" ) $line_buffered"
-eval "$CMD"
+exit
+
+# vim: sw=2 ai
