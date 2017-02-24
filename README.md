@@ -5,7 +5,7 @@ This is the same as running "kubectl logs -f <pod>" but for multiple pods.
 
 ## Installation
 
-Just download the [kubetail](https://raw.githubusercontent.com/johanhaleby/kubetail/master/kubetail) file and you're good to go.
+Just download the [kubetail](https://raw.githubusercontent.com/johanhaleby/kubetail/master/kubetail) file (or any of the [releases](https://github.com/johanhaleby/kubetail/releases)) and you're good to go.
 
 ### Homebrew
 
