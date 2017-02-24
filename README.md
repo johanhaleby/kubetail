@@ -11,8 +11,7 @@ Just download the [kubetail](https://raw.githubusercontent.com/johanhaleby/kubet
 
 You can also install kubetail using [brew](https://brew.sh/):
 
-	$ brew tap johanhaleby/kubetail
-	$ brew install kubetail
+	$ brew tap johanhaleby/kubetail && brew install kubetail
 
 Use `brew install --HEAD kubetail` to install the latest (unreleased) version.
 
