@@ -49,7 +49,7 @@ Supply `-h` for help and addtional options:
 
 ## Colors
 
-By using the `-k` argument you can specifiy how kubetail makes use of colors.
+By using the `-k` argument you can specifiy how kubetail makes use of colors (only applicable when tailing multiple pods).
 
 | Value   |     Description  |
 |----------|---------------|
