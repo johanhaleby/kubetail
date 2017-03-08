@@ -117,13 +117,12 @@ matching_pods_size=${#matching_pods[@]}
 if [ ${matching_pods_size} -eq 0 ]; then
 	echo "No pods exists that matches ${pod}"
 	exit 1
-else
-	echo "Will tail ${#matching_pods[@]} logs..."
 fi
 
 color_end=$(tput sgr0)
 
 # Wrap all pod names in the "kubectl logs <name> -f" command
+display_names_preview=()
 pod_logs_commands=()
 i=0
 for pod in ${matching_pods[@]}; do
@@ -145,9 +144,7 @@ for pod in ${matching_pods[@]}; do
 		else
 			display_name="${pod} ${container}"
 		fi
-
-		# Preview pod colors
-		echo "${color_start}${display_name}${color_end}"
+		display_names_preview+=("${color_start}${display_name}${color_end}")
 
 		if [ ${colored_output} == "pod" ]; then
 			colored_line="${color_start}[${display_name}]${color_end} \$line"
@@ -159,6 +156,12 @@ for pod in ${matching_pods[@]}; do
 
 		i=$(($i + 1))
 	done
+done
+
+# Preview pod colors
+echo "Will tail ${i} logs..."
+for preview in "${display_names_preview[@]}"; do
+	echo "$preview"
 done
 
 # Join all log commands into one string seperated by " & "
