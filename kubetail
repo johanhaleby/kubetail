@@ -20,8 +20,7 @@ usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod
 where:
     -h, --help           Show this help text
     -c, --container      The name of the container to tail in the pod (if multiple containers are defined in the pod).
-                         Defaults to the only container in the pod, and fails if there is more than one.
-                         Can be used multiple times.
+                         Defaults to all containers in the pod. Can be used multiple times.
     -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector       Label selector. If used the pod name is ignored.
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"default\")
@@ -129,7 +128,7 @@ pod_logs_commands=()
 i=0
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		containers=('')
+		containers=($(kubectl get pod ${pod} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
 	fi
 
 	for container in ${containers[@]}; do
