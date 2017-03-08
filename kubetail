@@ -25,9 +25,9 @@ where:
     -n, --namespace  	 The Kubernetes namespace where the pods are located (defaults to "default")
     -s, --since      	 Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
-    -k, --colored-output Use colored output (pod|line|false). 
-			 pod = only color podname, line = color entire line, false = don't use any colors. 
-			 Defaults to line.
+    -k, --colored-output Use colored output (pod|line|false).
+                         pod = only color podname, line = color entire line, false = don't use any colors.
+                         Defaults to line.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -42,8 +42,8 @@ if [ $# -eq 0 ]; then
 fi
 
 if [ "$#" -ne 0 ]; then
-    while [ "$#" -gt 0 ]
-    do
+	while [ "$#" -gt 0 ]
+	do
 		case "$1" in
 		-h|--help)
 			echo "$usage"
@@ -56,9 +56,9 @@ if [ "$#" -ne 0 ]; then
 			context="$2"
 			;;
 		-l|--selector)
-		        selector="--selector $2"
-		        pod=""
-		        ;;
+			selector="--selector $2"
+			pod=""
+			;;
 		-s|--since)
 			if [ -z "$2" ]; then
 				since="${default_since}"
@@ -96,7 +96,7 @@ if [ "$#" -ne 0 ]; then
 		*)  ;;
 		esac
 		shift
-    done
+	done
 fi
 
 # Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
@@ -126,18 +126,18 @@ color_end=$(tput sgr0)
 pod_logs_commands=()
 for i in ${!matching_pods[@]};
 do
-	pod=${matching_pods[$i]}	
+	pod=${matching_pods[$i]}
 
 	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
 		color_start=$(tput sgr0)
-	else 
-		color_start=$(tput setaf $(($i+1))) 
-	fi  
+	else
+		color_start=$(tput setaf $(($i+1)))
+	fi
 
 	# Preview pod colors
 	echo "$color_start$pod$color_end"
 
-	if [ ${colored_output} == "pod" ]; then 
+	if [ ${colored_output} == "pod" ]; then
 		colored_line="$color_start[$pod]$color_end \$line"
 	else
 		colored_line="$color_start[$pod] \$line $color_end"
