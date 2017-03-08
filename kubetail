@@ -128,17 +128,19 @@ pod_logs_commands=()
 i=0
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		containers=($(kubectl get pod ${pod} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
+		pod_containers=($(kubectl get pod ${pod} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
+	else
+		pod_containers="${containers[@]}"
 	fi
 
-	for container in ${containers[@]}; do
-		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#containers[@]} -eq 1 ]; then
+	for container in ${pod_containers[@]}; do
+		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
 			color_start=$(tput sgr0)
 		else
 			color_start=$(tput setaf $(($i+1)))
 		fi
 
-		if [ ${#containers[@]} -eq 1 ]; then
+		if [ ${#pod_containers[@]} -eq 1 ]; then
 			display_name="${pod}"
 		else
 			display_name="${pod} ${container}"
