@@ -12,7 +12,7 @@ colored_output="${default_colored_output}"
 
 pod="${1}"
 container=""
-selector=""
+selector=()
 since="${default_since}"
 
 usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
@@ -56,7 +56,7 @@ if [ "$#" -ne 0 ]; then
 			context="$2"
 			;;
 		-l|--selector)
-			selector="--selector $2"
+			selector=(--selector "$2")
 			pod=""
 			;;
 		-s|--since)
@@ -110,7 +110,7 @@ function join() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers ${selector} --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=(`kubectl get pods --context=${context} --no-headers "${selector[@]}" --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
