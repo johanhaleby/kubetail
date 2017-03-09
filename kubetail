@@ -125,6 +125,12 @@ color_end=$(tput sgr0)
 display_names_preview=()
 pod_logs_commands=()
 i=0
+
+# Allows for more colors, this is useful if one tails a lot pods
+if [ ${colored_output} != "true" ]; then	
+	export TERM=xterm-256color
+fi
+
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
 		pod_containers=($(kubectl get pod ${pod} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
@@ -136,7 +142,15 @@ for pod in ${matching_pods[@]}; do
 		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
 			color_start=$(tput sgr0)
 		else
-			color_start=$(tput setaf $(($i+1)))
+			if [ $i -gt 5 ]; then
+				# If index is more than 5 we skip the next two colors since color 6 is beige 
+				# (which is hard to see when using white or solarized background) and 7 is black
+				# (which is hard to see when using black background)
+				color_index=$(($i+3))
+			else
+				color_index=$(($i+1))
+			fi
+			color_start=$(tput setaf $color_index)
 		fi
 
 		if [ ${#pod_containers[@]} -eq 1 ]; then
