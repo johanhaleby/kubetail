@@ -11,19 +11,20 @@ line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 
 pod="${1}"
-container=""
+containers=()
 selector=()
 since="${default_since}"
 
 usage="${PROGNAME} [-h] [-c] [-n] [-t] [-l] [-s] -- tail multiple Kubernetes pod logs at the same time
 
 where:
-    -h, --help       	 Show this help text
-    -c, --container  	 The name of the container to tail in the pod (if multiple containers are defined in the pod). Default is none
-    -t, --context    	 The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
-    -l, --selector   	 Label selector. If used the pod name is ignored.
-    -n, --namespace  	 The Kubernetes namespace where the pods are located (defaults to "default")
-    -s, --since      	 Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+    -h, --help           Show this help text
+    -c, --container      The name of the container to tail in the pod (if multiple containers are defined in the pod).
+                         Defaults to all containers in the pod. Can be used multiple times.
+    -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+    -l, --selector       Label selector. If used the pod name is ignored.
+    -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"default\")
+    -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color podname, line = color entire line, false = don't use any colors.
@@ -50,7 +51,7 @@ if [ "$#" -ne 0 ]; then
 			exit 0
 			;;
 		-c|--container)
-			container="$2"
+			containers+=("$2")
 			;;
 		-t|--context)
 			context="$2"
@@ -110,44 +111,61 @@ function join() {
 }
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} --no-headers "${selector[@]}" --namespace=${namespace} | grep "${pod}" | sed 's/ .*//'`)
+matching_pods=(`kubectl get pods --context=${context} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
 	echo "No pods exists that matches ${pod}"
 	exit 1
-else
-	echo "Will tail ${#matching_pods[@]} logs..."
 fi
 
 color_end=$(tput sgr0)
 
 # Wrap all pod names in the "kubectl logs <name> -f" command
+display_names_preview=()
 pod_logs_commands=()
-for i in ${!matching_pods[@]};
-do
-	pod=${matching_pods[$i]}
-
-	if [ ${matching_pods_size} -eq 1 ] || [ ${colored_output} == "false" ]; then
-		color_start=$(tput sgr0)
+i=0
+for pod in ${matching_pods[@]}; do
+	if [ ${#containers[@]} -eq 0 ]; then
+		pod_containers=($(kubectl get pod ${pod} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
 	else
-		color_start=$(tput setaf $(($i+1)))
+		pod_containers="${containers[@]}"
 	fi
 
-	# Preview pod colors
-	echo "$color_start$pod$color_end"
+	for container in ${pod_containers[@]}; do
+		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
+			color_start=$(tput sgr0)
+		else
+			color_start=$(tput setaf $(($i+1)))
+		fi
 
-	if [ ${colored_output} == "pod" ]; then
-		colored_line="$color_start[$pod]$color_end \$line"
-	else
-		colored_line="$color_start[$pod] \$line $color_end"
-	fi
+		if [ ${#pod_containers[@]} -eq 1 ]; then
+			display_name="${pod}"
+		else
+			display_name="${pod} ${container}"
+		fi
+		display_names_preview+=("${color_start}${display_name}${color_end}")
 
-	pod_logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
+		if [ ${colored_output} == "pod" ]; then
+			colored_line="${color_start}[${display_name}]${color_end} \$line"
+		else
+			colored_line="${color_start}[${display_name}] \$line ${color_end}"
+		fi
+
+		logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
+
+		i=$(($i + 1))
+	done
+done
+
+# Preview pod colors
+echo "Will tail ${i} logs..."
+for preview in "${display_names_preview[@]}"; do
+	echo "$preview"
 done
 
 # Join all log commands into one string seperated by " & "
-join command_to_tail " & " "${pod_logs_commands[@]}"
+join command_to_tail " & " "${logs_commands[@]}"
 
 # Aggreate all logs and print to stdout
 CMD="cat <( eval "${command_to_tail}" ) $line_buffered"
