@@ -139,7 +139,7 @@ fi
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(kubectl get pod ${pod} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
+		pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
