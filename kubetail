@@ -133,13 +133,13 @@ pod_logs_commands=()
 i=0
 
 # Allows for more colors, this is useful if one tails a lot pods
-if [ ${colored_output} != "false" ]; then	
+if [ ${colored_output} != "false" ]; then
 	export TERM=xterm-256color
 fi
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' | xargs -n1))
+		pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
