@@ -14,7 +14,7 @@ pod="${1}"
 containers=()
 selector=()
 since="${default_since}"
-version="1.2.1"
+version="1.2.2-SNAPSHOT"
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
 
