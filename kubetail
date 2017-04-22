@@ -6,9 +6,11 @@ default_since="10s"
 default_namespace="default"
 default_line_buffered=""
 default_colored_output="line"
+default_timestamps=""
 
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
+timestamps="${default_timestamps}"
 
 pod="${1}"
 containers=()
@@ -30,7 +32,8 @@ where:
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color podname, line = color entire line, false = don't use any colors.
                          Defaults to line.
-    -v, --version 	 Prints the kubetail version 
+        --timestamps     Show timestamps for each log line
+    -v, --version        Prints the kubetail version
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -90,6 +93,13 @@ if [ "$#" -ne 0 ]; then
 				colored_output="${default_colored_output}"
 			else
 				colored_output="$2"
+			fi
+			;;
+		--timestamps)
+			if [ "$2" = "false" ]; then
+			    timestamps="$1=$2"
+			else
+			    timestamps="$1"
 			fi
 			;;
 		--)
@@ -172,7 +182,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | while read line; do echo \"$colored_line\"; done");
+		logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
 
 		i=$(($i + 1))
 	done
