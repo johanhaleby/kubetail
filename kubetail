@@ -12,7 +12,10 @@ line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
 
-pod="${1}"
+if [[ ${1} != -* ]]
+then
+    pod="${1}"
+fi
 containers=()
 selector=()
 since="${default_since}"
