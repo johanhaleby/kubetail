@@ -187,7 +187,8 @@ for pod in ${matching_pods[@]}; do
 
 		logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
 
-		i=$(($i + 1))
+		# There are only 11 usable colors
+		i=$(( ($i+1)%13 ))
 	done
 done
 
