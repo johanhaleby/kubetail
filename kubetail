@@ -18,6 +18,7 @@ then
 fi
 containers=()
 selector=()
+regex='substring'
 since="${default_since}"
 version="1.2.2-SNAPSHOT"
 
@@ -32,6 +33,7 @@ where:
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"default\")
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
+    -e, --regex          The type of name matching to use (regex|substring)
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color podname, line = color entire line, false = don't use any colors.
                          Defaults to line.
@@ -42,6 +44,7 @@ examples:
     ${PROGNAME} my-pod-v1
     ${PROGNAME} my-pod-v1 -c my-container
     ${PROGNAME} my-pod-v1 -t int1-context -c my-container
+    ${PROGNAME} '(service|consumer|thing)' -e regex
     ${PROGNAME} -l service=my-service
     ${PROGNAME} --selector service=my-service --since 10m"
 
@@ -64,6 +67,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-c|--container)
 			containers+=("$2")
+			;;
+		-e|--regex)
+			regex="$2"
 			;;
 		-t|--context)
 			context="$2"
@@ -129,8 +135,14 @@ function join() {
 	printf -v "$retname" "%s" "$ret${@/#/$sep}"
 }
 
+grep_matcher=''
+if [ "${regex}" == 'regex' ]; then
+	echo "Using regex '${pod}' to match pods"
+	grep_matcher='-E'
+fi
+
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep "${pod}"`)
+matching_pods=(`kubectl get pods --context=${context} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
