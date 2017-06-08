@@ -34,6 +34,8 @@ where:
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -e, --regex          The type of name matching to use (regex|substring)
+    -j, --jq             If your output is json - use this jq-selector to parse it.
+                         example: --jq \".logger + \\\" \\\" + .message\"
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color podname, line = color entire line, false = don't use any colors.
                          Defaults to line.
@@ -102,6 +104,13 @@ if [ "$#" -ne 0 ]; then
 				colored_output="${default_colored_output}"
 			else
 				colored_output="$2"
+			fi
+			;;
+		-j|--jq)
+			if [ -z "$2" ]; then
+				jq_selector="${default_jq_selector}"
+			else
+				jq_selector="$2"
 			fi
 			;;
 		--timestamps)
@@ -197,7 +206,11 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
+		if [ "z" == "z$jq_selector" ]; then
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
+		else
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\"; done");
+		fi
 
 		# There are only 11 usable colors
 		i=$(( ($i+1)%13 ))
