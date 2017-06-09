@@ -7,10 +7,13 @@ default_namespace="default"
 default_line_buffered=""
 default_colored_output="line"
 default_timestamps=""
+default_jq_selector=""
+default_skip_colors="7,8"
 
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
+skip_colors="${default_skip_colors}"
 
 if [[ ${1} != -* ]]
 then
@@ -34,9 +37,14 @@ where:
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -e, --regex          The type of name matching to use (regex|substring)
+    -j, --jq             If your output is json - use this jq-selector to parse it.
+                         example: --jq \".logger + \\\" \\\" + .message\"
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color podname, line = color entire line, false = don't use any colors.
                          Defaults to line.
+    -z, --skip-colors    Comma-separated list of colors to not use in output
+                         If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
+                         Defaults to: 7,8
         --timestamps     Show timestamps for each log line
     -v, --version        Prints the kubetail version
 
@@ -104,6 +112,20 @@ if [ "$#" -ne 0 ]; then
 				colored_output="$2"
 			fi
 			;;
+		-j|--jq)
+			if [ -z "$2" ]; then
+				jq_selector="${default_jq_selector}"
+			else
+				jq_selector="$2"
+			fi
+			;;
+		-z|--skip-colors)
+			if [ -z "$2" ]; then
+				skip_colors="${default_skip_colors}"
+			else
+				skip_colors="$2"
+			fi
+			;;
 		--timestamps)
 			if [ "$2" = "false" ]; then
 			    timestamps="$1=$2"
@@ -156,6 +178,12 @@ color_end=$(tput sgr0)
 display_names_preview=()
 pod_logs_commands=()
 i=0
+color_index=0
+
+function next_col {
+	potential_col=$(($1+1))
+	[[ $skip_colors =~ (^|,)$potential_col($|,) ]] && echo `next_col $potential_col` || echo $potential_col
+}
 
 # Allows for more colors, this is useful if one tails a lot pods
 if [ ${colored_output} != "false" ]; then
@@ -173,14 +201,7 @@ for pod in ${matching_pods[@]}; do
 		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
 			color_start=$(tput sgr0)
 		else
-			if [ $i -gt 5 ]; then
-				# If index is more than 5 we skip the next two colors since color 6 is beige 
-				# (which is hard to see when using white or solarized background) and 7 is black
-				# (which is hard to see when using black background)
-				color_index=$(($i+3))
-			else
-				color_index=$(($i+1))
-			fi
+			color_index=`next_col $color_index`
 			color_start=$(tput setaf $color_index)
 		fi
 
@@ -197,7 +218,11 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
+		if [ "z" == "z$jq_selector" ]; then
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
+		else
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\"; done");
+		fi
 
 		# There are only 11 usable colors
 		i=$(( ($i+1)%13 ))
