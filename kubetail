@@ -219,9 +219,9 @@ for pod in ${matching_pods[@]}; do
 		fi
 
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\"; done");
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\" | tail -n +1; done");
 		else
-			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\"; done");
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\" | tail -n +1; done");
 		fi
 
 		# There are only 11 usable colors
