@@ -23,7 +23,7 @@ containers=()
 selector=()
 regex='substring'
 since="${default_since}"
-version="1.3.2"
+version="1.3.3-SNAPSHOT"
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
 
