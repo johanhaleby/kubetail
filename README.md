@@ -72,14 +72,8 @@ kubetail itself doesn't have filitering or highlighting capabilities built-in. I
 
 If you're not using iTerm2 or think that kubetail is lacking in features there's a [fork](https://github.com/aks/kubetail) of kubetail made by [Alan Stebbens](https://github.com/aks) that allows for richer configuration and uses [multitail](https://www.vanheusden.com/multitail/) and [bash-lib](https://github.com/aks/bash-lib). Alan has been kind enough to provide a pull request but my current thinking is that I'd like kubetail to stay simple and small and not use any dependencies.
 
-## Known issues
+## More
 
-When you press "ctrl+c" to end the log session you may end up with errors like this:
-
-```bash
-error: write /dev/stdout: broken pipe
-```
-
-I'm not quite sure why this happens, pull requests are welcome :)
+Pull requests are very welcome!
 
 See also: http://code.haleby.se/2015/11/13/tail-logs-from-multiple-pods-simultaneously-in-kubernetes/
