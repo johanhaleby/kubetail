@@ -190,11 +190,24 @@ if [ ${colored_output} != "false" ]; then
 	export TERM=xterm-256color
 fi
 
-trap kill_kubectl_processes INT
+# Function thats all kubectl processes that are started by kubetail in the background
+# It does this by reading from the "pid_temp_file" that contains the PID of all kubectl processes
+function kill_kubectl_processes {
+	while read p; do
+  		kill ${p} 2>/dev/null;
+	done < "$pid_temp_file"
+	rm ${pid_temp_file}
+}
 
-PID=`echo $$`
-tempfile="/tmp/kubetail.${PID}"
-touch ${tempfile}
+# Invoke the "kill_kubectl_processes" function when the script is stopped (including ctrl+c)
+# Note that "INT" is not used because if, for example, kubectl cannot find a container 
+# (for example when running "kubetail something -c non_matching") it exists and we need to delete
+# the temporary file in these cases as well.
+trap kill_kubectl_processes EXIT
+
+PID=`echo $$` # Get the PID of this process
+pid_temp_file="/tmp/kubetail.${PID}" # Use the PID to create a temp file
+touch ${pid_temp_file} # Initiate the temp file
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
@@ -224,10 +237,13 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
+		kubectl_cmd="kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace}"
+		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
+		capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\" | tail -n +1; done & echo "'$!'" >> ${tempfile}");
+			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd} ${capture_pid_to_file}");
 		else
-			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\" | tail -n +1; done & echo "'$!'" >> ${tempfile}");
+			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | ${colorify_lines_cmd} ${capture_pid_to_file}");
 		fi
 
 		# There are only 11 usable colors
@@ -243,14 +259,6 @@ done
 
 # Join all log commands into one string seperated by " & "
 join command_to_tail " & " "${logs_commands[@]}"
-
-function kill_kubectl_processes {
-	while read p; do
-  		kill ${p} 2>/dev/null;
-	done < "$tempfile"
-	rm ${tempfile}
-}
-
 
 # Aggreate all logs and print to stdout
 cat <( eval "${command_to_tail}" ) $line_buffered
