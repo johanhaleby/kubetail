@@ -269,4 +269,3 @@ join command_to_tail " & " "${logs_commands[@]}"
 
 # Aggreate all logs and print to stdout
 cat <( eval "${command_to_tail}" ) $line_buffered
-
