@@ -190,6 +190,12 @@ if [ ${colored_output} != "false" ]; then
 	export TERM=xterm-256color
 fi
 
+trap kill_kubectl_processes INT
+
+PID=`echo $$`
+tempfile="/tmp/kubetail.${PID}"
+touch ${tempfile}
+
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
 		pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
@@ -219,9 +225,9 @@ for pod in ${matching_pods[@]}; do
 		fi
 
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\" | tail -n +1; done");
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} ${timestamps} | while read line; do echo \"$colored_line\" | tail -n +1; done & echo "'$!'" >> ${tempfile}");
 		else
-			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\" | tail -n +1; done");
+			logs_commands+=("kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | while read line; do echo \"$colored_line\" | tail -n +1; done & echo "'$!'" >> ${tempfile}");
 		fi
 
 		# There are only 11 usable colors
@@ -238,6 +244,14 @@ done
 # Join all log commands into one string seperated by " & "
 join command_to_tail " & " "${logs_commands[@]}"
 
+function kill_kubectl_processes {
+	while read p; do
+  		kill ${p} 2>/dev/null;
+	done < "$tempfile"
+	rm ${tempfile}
+}
+
+
 # Aggreate all logs and print to stdout
-CMD="cat <( eval "${command_to_tail}" ) $line_buffered"
-eval "$CMD"
+cat <( eval "${command_to_tail}" ) $line_buffered
+
