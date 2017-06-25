@@ -194,7 +194,13 @@ fi
 # It does this by reading from the "pid_temp_file" that contains the PID of all kubectl processes
 function kill_kubectl_processes {
 	while read p; do
-  		kill "$p" 2>/dev/null || kill -2 "$p" 2>/dev/null|| kill -9 "$p" 2>/dev/null
+		# In order to not kill the wrong processes (for example if a kubectl process died and another process replaced its PID)
+		# we check that the process name contains "kubetail". It's not bulletproof since another kubetail process
+		# might have picked up the old PID but this is deemed unlikley.
+		pid_cmd=$(ps -p "$p" -o command=)
+		if [[ $pid_cmd == *kubetail* ]]; then
+  			kill "$p" 2>/dev/null || kill -2 "$p" 2>/dev/null|| kill -9 "$p" 2>/dev/null
+		fi
 	done < "$pid_temp_file"
 	rm ${pid_temp_file}
 }
