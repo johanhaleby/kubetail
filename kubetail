@@ -190,18 +190,18 @@ if [ ${colored_output} != "false" ]; then
 	export TERM=xterm-256color
 fi
 
-# Function thats all kubectl processes that are started by kubetail in the background
+# Function that kills all kubectl processes that are started by kubetail in the background
 # It does this by reading from the "pid_temp_file" that contains the PID of all kubectl processes
 function kill_kubectl_processes {
 	while read p; do
-  		kill ${p} 2>/dev/null;
+  		kill "$p" 2>/dev/null || kill -2 "$p" 2>/dev/null|| kill -9 "$p" 2>/dev/null
 	done < "$pid_temp_file"
 	rm ${pid_temp_file}
 }
 
 # Invoke the "kill_kubectl_processes" function when the script is stopped (including ctrl+c)
 # Note that "INT" is not used because if, for example, kubectl cannot find a container 
-# (for example when running "kubetail something -c non_matching") it exists and we need to delete
+# (for example when running "kubetail something -c non_matching") we still need to delete
 # the temporary file in these cases as well.
 trap kill_kubectl_processes EXIT
 
