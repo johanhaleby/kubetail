@@ -199,7 +199,8 @@ function kill_kubectl_processes {
 		# might have picked up the old PID but this is deemed unlikley.
 		pid_cmd=$(ps -p "$p" -o command=)
 		if [[ $pid_cmd == *kubetail* ]]; then
-  			kill "$p" 2>/dev/null || kill -2 "$p" 2>/dev/null|| kill -9 "$p" 2>/dev/null
+			# Try killing gently first and then progress to more firm alternatives if this fails
+  			kill "$p" || kill -2 "$p" || kill -9 "$p" 2>/dev/null
 		fi
 	done < "$pid_temp_file"
 	rm ${pid_temp_file}
