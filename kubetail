@@ -203,7 +203,7 @@ function kill_kubectl_processes {
   			kill "$p" || kill -2 "$p" || kill -9 "$p" 2>/dev/null
 		fi
 	done < "$pid_temp_file"
-	rm ${pid_temp_file}
+	rm ${pid_temp_file} 2>/dev/null
 }
 
 # Invoke the "kill_kubectl_processes" function when the script is stopped (including ctrl+c)
