@@ -203,8 +203,13 @@ function kill_kubectl_processes {
   			kill "$p" || kill -2 "$p" || kill -9 "$p" 2>/dev/null
 		fi
 	done < "$pid_temp_file"
-	rm ${pid_temp_file} 2>/dev/null
+	# Remove the temp pid file
+	rm "${pid_temp_file}" 2>/dev/null
+	# Remove the temp pipe
+	rm "${pipe_temp_file}" 2>/dev/null
 }
+
+mkfifo "${pipe_temp_file}" 2>/dev/null
 
 # Invoke the "kill_kubectl_processes" function when the script is stopped (including ctrl+c)
 # Note that "INT" is not used because if, for example, kubectl cannot find a container 
@@ -213,7 +218,8 @@ function kill_kubectl_processes {
 trap kill_kubectl_processes EXIT
 
 PID=`echo $$` # Get the PID of this process
-pid_temp_file="/tmp/kubetail.${PID}" # Use the PID to create a temp file
+pid_temp_file="/tmp/kubetail-pids.${PID}" # Use the PID to create a temp file for pids
+pipe_temp_file="/tmp/kubetail-pipe.${PID}" # Use the PID to create a temp file for the pipe
 touch ${pid_temp_file} # Initiate the temp file
 
 for pod in ${matching_pods[@]}; do
@@ -248,7 +254,7 @@ for pod in ${matching_pods[@]}; do
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd} ${capture_pid_to_file}");
+			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}${capture_pid_to_file}");
 		else
 			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | ${colorify_lines_cmd} ${capture_pid_to_file}");
 		fi
@@ -267,5 +273,10 @@ done
 # Join all log commands into one string seperated by " & "
 join command_to_tail " & " "${logs_commands[@]}"
 
-# Aggreate all logs and print to stdout
-tail +1f <( eval "${command_to_tail}" ) $line_buffered
+# Aggreate all logs and pipe them to the fifo pipe and add the pid to the "pid_temp_file" 
+# to kill the processes on ctrl+c
+eval "${command_to_tail}" > "${pipe_temp_file}" & echo "$!" >> ${pid_temp_file}
+# Tail the fifo pipe
+tail +1f "${pipe_temp_file}" $line_buffered
+# Wait for background processes finish
+wait
