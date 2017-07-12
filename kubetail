@@ -268,4 +268,5 @@ done
 join command_to_tail " & " "${logs_commands[@]}"
 
 # Aggregate all logs and print to stdout
-tail +1f <( eval "${command_to_tail}" ) $line_buffered
+# Note that tail +1f doesn't work on some Linux distributions so we use this slightly longer alternative
+tail -f -n +1 <( eval "${command_to_tail}" ) $line_buffered
