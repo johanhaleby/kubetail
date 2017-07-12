@@ -40,7 +40,7 @@ where:
     -j, --jq             If your output is json - use this jq-selector to parse it.
                          example: --jq \".logger + \\\" \\\" + .message\"
     -k, --colored-output Use colored output (pod|line|false).
-                         pod = only color podname, line = color entire line, false = don't use any colors.
+                         pod = only color pod name, line = color entire line, false = don't use any colors.
                          Defaults to line.
     -z, --skip-colors    Comma-separated list of colors to not use in output
                          If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
@@ -147,7 +147,7 @@ if [ "$#" -ne 0 ]; then
 	done
 fi
 
-# Join function that supports a multi-character seperator (copied from http://stackoverflow.com/a/23673883/398441)
+# Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
 	# $1 is return variable name
 	# $2 is sep
@@ -264,8 +264,8 @@ for preview in "${display_names_preview[@]}"; do
 	echo "$preview"
 done
 
-# Join all log commands into one string seperated by " & "
+# Join all log commands into one string separated by " & "
 join command_to_tail " & " "${logs_commands[@]}"
 
-# Aggreate all logs and print to stdout
+# Aggregate all logs and print to stdout
 tail +1f <( eval "${command_to_tail}" ) $line_buffered
