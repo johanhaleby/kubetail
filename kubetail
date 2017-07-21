@@ -9,11 +9,13 @@ default_colored_output="line"
 default_timestamps=""
 default_jq_selector=""
 default_skip_colors="7,8"
+default_tail="-1"
 
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
 skip_colors="${default_skip_colors}"
+tail="${default_tail}"
 
 if [[ ${1} != -* ]]
 then
@@ -46,6 +48,7 @@ where:
                          If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
                          Defaults to: 7,8
         --timestamps     Show timestamps for each log line
+        --tail           Lines of recent log file to display. Defaults to -1, showing all log lines.
     -v, --version        Prints the kubetail version
 
 examples:
@@ -54,7 +57,8 @@ examples:
     ${PROGNAME} my-pod-v1 -t int1-context -c my-container
     ${PROGNAME} '(service|consumer|thing)' -e regex
     ${PROGNAME} -l service=my-service
-    ${PROGNAME} --selector service=my-service --since 10m"
+    ${PROGNAME} --selector service=my-service --since 10m
+    ${PROGNAME} --tail 1"
 
 if [ $# -eq 0 ]; then
 	echo "$usage"
@@ -131,6 +135,13 @@ if [ "$#" -ne 0 ]; then
 			    timestamps="$1=$2"
 			else
 			    timestamps="$1"
+			fi
+			;;
+		--tail)
+			if [ -z "$2" ]; then
+			    tail="${default_tail}"
+			else
+			    tail="$2"
 			fi
 			;;
 		--)
@@ -244,7 +255,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		kubectl_cmd="kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --namespace=${namespace}"
+		kubectl_cmd="kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace}"
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
 		if [ "z" == "z$jq_selector" ]; then
