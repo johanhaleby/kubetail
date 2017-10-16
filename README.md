@@ -45,15 +45,15 @@ To tail only a specific container from multiple pods specify the container like 
 
 You can repeat `-c` to tail multiple specific containers:
 
-	$ kubetail app2 -c container1 -c contianer2
+	$ kubetail app2 -c container1 -c container2
 
-Supply `-h` for help and addtional options:
+Supply `-h` for help and additional options:
 
 	$ kubetail -h
 
 ## Colors
 
-By using the `-k` argument you can specifiy how kubetail makes use of colors (only applicable when tailing multiple pods).
+By using the `-k` argument you can specify how kubetail makes use of colors (only applicable when tailing multiple pods).
 
 | Value   |     Description  |
 |----------|---------------|
@@ -68,7 +68,7 @@ Example:
 	
 ## Filtering / Highlighting etc
 
-kubetail itself doesn't have filitering or highlighting capabilities built-in. If you're on MacOSX I recommend using [iTerm2](https://www.iterm2.com/) which allows for continuous highlighting of search terms, good scrolling capabilities and multitab arrangements. Another useful feature of iTerm2 is the "timeline" (`cmd` + `shift` + `e`) which lets you display a timeline in your own local timezone next to the logs (that are typically in UTC). 
+kubetail itself doesn't have filtering or highlighting capabilities built-in. If you're on MacOSX I recommend using [iTerm2](https://www.iterm2.com/) which allows for continuous highlighting of search terms, good scrolling capabilities and multitab arrangements. Another useful feature of iTerm2 is the "timeline" (`cmd` + `shift` + `e`) which lets you display a timeline in your own local timezone next to the logs (that are typically in UTC). 
 
 If you're not using iTerm2 or think that kubetail is lacking in features there's a [fork](https://github.com/aks/kubetail) of kubetail made by [Alan Stebbens](https://github.com/aks) that allows for richer configuration and uses [multitail](https://www.vanheusden.com/multitail/) and [bash-lib](https://github.com/aks/bash-lib). Alan has been kind enough to provide a pull request but my current thinking is that I'd like kubetail to stay simple and small and not use any dependencies.
 
