@@ -34,6 +34,7 @@ where:
     -c, --container      The name of the container to tail in the pod (if multiple containers are defined in the pod).
                          Defaults to all containers in the pod. Can be used multiple times.
     -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+                         Several contexts can be supplied, separated by commas.
     -l, --selector       Label selector. If used the pod name is ignored.
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"default\")
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
@@ -84,7 +85,7 @@ if [ "$#" -ne 0 ]; then
 			regex="$2"
 			;;
 		-t|--context)
-			context="$2"
+			contexts=`echo "$2" | sed 's/,/ /g'`
 			;;
 		-l|--selector)
 			selector=(--selector "$2")
@@ -175,8 +176,13 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
-matching_pods_size=${#matching_pods[@]}
+declare -A matching_pods
+matching_pods_size=0
+for context in ${contexts[@]}; do
+	pods=(`kubectl get pods --context=${context} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
+	matching_pods[${context}]="${pods[@]}"
+	matching_pods_size=$((matching_pods_size + ${#pods[@]}))
+done
 
 if [ ${matching_pods_size} -eq 0 ]; then
 	echo "No pods exists that matches ${pod}"
@@ -227,50 +233,53 @@ PID=`echo $$` # Get the PID of this process
 pid_temp_file="/tmp/kubetail.${PID}" # Use the PID to create a temp file
 touch ${pid_temp_file} # Initiate the temp file
 
-for pod in ${matching_pods[@]}; do
-	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
-	else
-		pod_containers=("${containers[@]}")
-	fi
 
-	for container in ${pod_containers[@]}; do
-		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
-			color_start=$(tput sgr0)
+for context in ${!matching_pods[@]}; do
+	for pod in ${matching_pods[${context}]}; do
+		if [ ${#containers[@]} -eq 0 ]; then
+			pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
 		else
-			color_index=`next_col $color_index`
-			color_start=$(tput setaf $color_index)
+			pod_containers=("${containers[@]}")
 		fi
 
-		if [ ${#pod_containers[@]} -eq 1 ]; then
-			display_name="${pod}"
-		else
-			display_name="${pod} ${container}"
-		fi
-		display_names_preview+=("${color_start}${display_name}${color_end}")
+		for container in ${pod_containers[@]}; do
+			if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
+				color_start=$(tput sgr0)
+			else
+				color_index=`next_col $color_index`
+				color_start=$(tput setaf $color_index)
+			fi
 
-		if [ ${colored_output} == "pod" ]; then
-			colored_line="${color_start}[${display_name}]${color_end} \$line"
-		else
-			colored_line="${color_start}[${display_name}] \$line ${color_end}"
-		fi
+			if [ ${#pod_containers[@]} -eq 1 ]; then
+				display_name="${pod}"
+			else
+				display_name="${pod} ${container}"
+			fi
+			display_names_preview+=("${color_start}${display_name}${color_end}")
 
-		kubectl_cmd="kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace}"
-		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
-		capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
-		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd} ${capture_pid_to_file}");
-		else
-			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | ${colorify_lines_cmd} ${capture_pid_to_file}");
-		fi
+			if [ ${colored_output} == "pod" ]; then
+				colored_line="${color_start}[${display_name}]${color_end} \$line"
+			else
+				colored_line="${color_start}[${display_name}] \$line ${color_end}"
+			fi
 
-		# There are only 11 usable colors
-		i=$(( ($i+1)%13 ))
+			kubectl_cmd="kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace}"
+			colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
+			capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
+			if [ "z" == "z$jq_selector" ]; then
+				logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd} ${capture_pid_to_file}");
+			else
+				logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. | fromjson? | $jq_selector ' | ${colorify_lines_cmd} ${capture_pid_to_file}");
+			fi
+
+			# There are only 11 usable colors
+			i=$(( ($i+1)%13 ))
+		done
 	done
 done
 
 # Preview pod colors
-echo "Will tail ${i} logs..."
+echo "Will tail ${#display_names_preview[@]} logs..."
 for preview in "${display_names_preview[@]}"; do
 	echo "$preview"
 done
