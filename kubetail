@@ -270,7 +270,7 @@ for pod in ${matching_pods[@]}; do
 done
 
 # Preview pod colors
-echo "Will tail ${i} logs..."
+echo "Will tail ${#display_names_preview[@]} logs..."
 for preview in "${display_names_preview[@]}"; do
 	echo "$preview"
 done
