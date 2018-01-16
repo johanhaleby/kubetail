@@ -1,5 +1,7 @@
 #!/bin/bash
 
+KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
+
 readonly PROGNAME=$(basename $0)
 
 default_since="10s"
@@ -175,7 +177,7 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`kubectl get pods --context=${context} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
+matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -229,7 +231,7 @@ touch ${pid_temp_file} # Initiate the temp file
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(kubectl get pod ${pod} --context=${context} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
+		pod_containers=($(${KUBECTL_BIN} get pod ${pod} ${context:+--context=${context}} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
@@ -255,7 +257,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		kubectl_cmd="kubectl --context=${context} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace}"
+		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace}"
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
 		if [ "z" == "z$jq_selector" ]; then
