@@ -28,8 +28,9 @@ selector=()
 regex='substring'
 since="${default_since}"
 version="1.4.4-SNAPSHOT"
+matches_only=false
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-m] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help           Show this help text
@@ -38,6 +39,7 @@ where:
     -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector       Label selector. If used the pod name is ignored.
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"default\")
+    -m, --matches        Print the names of the matched pods and containers, then exit.
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -e, --regex          The type of name matching to use (regex|substring)
@@ -92,6 +94,9 @@ if [ "$#" -ne 0 ]; then
 			selector=(--selector "$2")
 			pod=""
 			;;
+        -m|--matches)
+            matches_only=true
+            ;;
 		-s|--since)
 			if [ -z "$2" ]; then
 				since="${default_since}"
@@ -276,6 +281,11 @@ echo "Will tail ${#display_names_preview[@]} logs..."
 for preview in "${display_names_preview[@]}"; do
 	echo "$preview"
 done
+
+if [[ ${matches_only} == true ]];
+then
+  exit 0
+fi
 
 # Join all log commands into one string separated by " & "
 join command_to_tail " & " "${logs_commands[@]}"
