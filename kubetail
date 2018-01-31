@@ -30,7 +30,7 @@ since="${default_since}"
 version="1.4.4-SNAPSHOT"
 dry-run=false
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-m] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help           Show this help text
