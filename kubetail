@@ -28,7 +28,7 @@ selector=()
 regex='substring'
 since="${default_since}"
 version="1.4.4-SNAPSHOT"
-dry-run=false
+dryrun=false
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
 
@@ -95,7 +95,7 @@ if [ "$#" -ne 0 ]; then
 			pod=""
 			;;
 		-d|--dry-run)
-			dry-run=true
+			dryrun=true
 			;;
 		-s|--since)
 			if [ -z "$2" ]; then
@@ -282,7 +282,7 @@ for preview in "${display_names_preview[@]}"; do
 	echo "$preview"
 done
 
-if [[ ${dry-run} == true ]];
+if [[ ${dryrun} == true ]];
 then
   exit 0
 fi
