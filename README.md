@@ -47,6 +47,14 @@ You can repeat `-c` to tail multiple specific containers:
 
 	$ kubetail app2 -c container1 -c container2
 
+To tail multiple applications at the same time seperate them by comma:
+
+	$ kubetail app1,app2
+
+For advanced matching you can use regular expressions:
+
+	$ kubetail "^app1|.*my-demo.*" --regex
+
 Supply `-h` for help and additional options:
 
 	$ kubetail -h
