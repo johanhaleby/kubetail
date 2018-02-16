@@ -85,7 +85,7 @@ if [ "$#" -ne 0 ]; then
 			containers+=("$2")
 			;;
 		-e|--regex)
-			regex="$2"
+			regex="regex"
 			;;
 		-t|--context)
 			context="$2"
