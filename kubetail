@@ -175,6 +175,27 @@ function join() {
 	printf -v "$retname" "%s" "$ret${@/#/$sep}"
 }
 
+function is_regex_matching() {
+	"${regex}" == 'regex'
+}
+
+# Check if pod query contains a comma and we've not specified "regex" explicitly, 
+# if so we convert the pod query string into a regex that matches all pods seperated by the comma
+if [[ "${pod}" = *","* ]] && [ ! "${regex}" == 'regex' ]; then
+	
+	# Split the supplied query string (in variable pod) by comma into an array named "pods_to_match"
+	IFS=',' read -r -a pods_to_match <<< "${pod}"
+
+	# Join all pod names into a string with ".*|.*" as delimiter
+	join pod ".*|.*" "${pods_to_match[@]}"
+
+	# Prepend and initial ".*" and and append the last ".*"
+	pod=".*${pod}.*"
+
+	# Force the use of regex matching
+	regex='regex'
+fi
+
 grep_matcher=''
 if [ "${regex}" == 'regex' ]; then
 	echo "Using regex '${pod}' to match pods"
