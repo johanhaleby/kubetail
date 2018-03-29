@@ -29,8 +29,9 @@ regex='substring'
 since="${default_since}"
 version="1.5.1-SNAPSHOT"
 dryrun=false
+cluster=""
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-s] [-b] [-k] [-v] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help           Show this help text
@@ -54,6 +55,7 @@ where:
         --timestamps     Show timestamps for each log line
         --tail           Lines of recent log file to display. Defaults to -1, showing all log lines.
     -v, --version        Prints the kubetail version
+    -r, --cluster        The name of the kubeconfig cluster to use.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -89,6 +91,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-t|--context)
 			context="$2"
+			;;
+		-r|--cluster)
+			cluster="--cluster $2"
 			;;
 		-l|--selector)
 			selector=(--selector "$2")
@@ -203,7 +208,7 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" --namespace=${namespace} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
+matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" --namespace=${namespace} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -257,7 +262,7 @@ touch ${pid_temp_file} # Initiate the temp file
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(${KUBECTL_BIN} get pod ${pod} ${context:+--context=${context}} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} | xargs -n1))
+		pod_containers=($(${KUBECTL_BIN} get pod ${pod} ${context:+--context=${context}} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} ${cluster} | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
@@ -283,7 +288,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace}"
+		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace} ${cluster}"
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		capture_pid_to_file="& echo "'$!'" >> ${pid_temp_file}"
 		if [ "z" == "z$jq_selector" ]; then
