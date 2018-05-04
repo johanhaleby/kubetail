@@ -237,7 +237,7 @@ fi
 # Function that kills all kubectl processes that are started by kubetail in the background
 function kill_kubectl_processes {
 	pgid="$( ps -o pgid "$$" | grep [0-9] | tr -d ' ' )"
-	kill -- -$pgid
+	kill -PIPE -- -$pgid
 }
 
 # Invoke the "kill_kubectl_processes" function when the script is stopped (including ctrl+c)
