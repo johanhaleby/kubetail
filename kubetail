@@ -4,18 +4,20 @@ KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 
 readonly PROGNAME=$(basename $0)
 
-default_since="10s"
-default_namespace="default"
-default_line_buffered=""
-default_colored_output="line"
-default_timestamps=""
-default_jq_selector=""
-default_skip_colors="7,8"
-default_tail="-1"
+default_since="${KUBETAIL_SINCE:-10s}"
+default_namespace="${KUBETAIL_NAMESPACE:-default}"
+default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
+default_colored_output="${KUBETAIL_COLORED_OUTPUT:-line}"
+default_timestamps="${KUBETAIL_TIMESTAMPS:-}"
+default_jq_selector="${KUBETAIL_JQ_SELECTOR:-}"
+default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
+default_tail="${KUBETAIL_TAIL:--1}"
 
+namespace="${default_namespace}"
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
+jq_selector="${default_jq_selector}"
 skip_colors="${default_skip_colors}"
 tail="${default_tail}"
 
