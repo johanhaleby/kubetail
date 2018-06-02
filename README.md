@@ -80,6 +80,19 @@ kubetail itself doesn't have filtering or highlighting capabilities built-in. If
 
 If you're not using iTerm2 or think that kubetail is lacking in features there's a [fork](https://github.com/aks/kubetail) of kubetail made by [Alan Stebbens](https://github.com/aks) that allows for richer configuration and uses [multitail](https://www.vanheusden.com/multitail/) and [bash-lib](https://github.com/aks/bash-lib). Alan has been kind enough to provide a pull request but my current thinking is that I'd like kubetail to stay simple and small and not use any dependencies.
 
+## Environment
+
+kubetail can take default option values from environment variables matching the option name.
+
+    KUBETAIL_SINCE
+    KUBETAIL_NAMESPACE
+    KUBETAIL_LINE_BUFFERED
+    KUBETAIL_COLORED_OUTPUT
+    KUBETAIL_TIMESTAMPS
+    KUBETAIL_JQ_SELECTOR
+    KUBETAIL_SKIP_COLORS
+    KUBETAIL_TAIL
+
 ## More
 
 Pull requests are very welcome!
