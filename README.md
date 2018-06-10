@@ -17,7 +17,7 @@ Use `brew install --HEAD kubetail` to install the latest (unreleased) version.
 
 ### Completion
 
-Install the [completion script](completion/) (bash/zsh/fish) to dynamically display the pods name (e.g. for Ubuntu, copy the scripts to `/etc/bash_completion.d/` and restart your terminal)
+Install the script using homebrew to dynamically display the pods names. Alternatively install the [completion script](completion/) (bash/zsh/fish) manually. For Ubuntu, copy the scripts to `/etc/bash_completion.d/` and restart your terminal). For zsh on Mac copy the script to `/usr/local/share/zsh/site-functions/_kubetail`.
 
 ## Usage
 
