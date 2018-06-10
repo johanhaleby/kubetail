@@ -238,15 +238,12 @@ fi
 
 # Function that kills all kubectl processes that are started by kubetail in the background
 function kill_kubectl_processes {
-	pgid="$( ps -o pgid "$$" | grep [0-9] | tr -d ' ' )"
-	# We add -PIPE to suppress the kill message. See https://stackoverflow.com/a/14152313/398441.
-	kill -PIPE -- -$pgid
+	kill 0
 }
 
 # Invoke the "kill_kubectl_processes" function when the script is stopped (including ctrl+c)
 # Note that "INT" is not used because if, for example, kubectl cannot find a container
-# (for example when running "kubetail something -c non_matching") we still need to delete
-# the temporary file in these cases as well.
+# (for example when running "kubetail something -c non_matching")
 trap kill_kubectl_processes EXIT
 
 for pod in ${matching_pods[@]}; do
