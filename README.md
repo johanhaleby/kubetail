@@ -18,8 +18,8 @@ Use `brew install --HEAD kubetail` to install the latest (unreleased) version.
 ### Completion
 
 Install the script using homebrew to dynamically display the pods names on `$ kubetail <tab>`. Alternatively install the [completion script](completion/) (bash/zsh/fish) manually. 
-* For Ubuntu, copy the scripts to `/etc/bash_completion.d/`. 
-* For zsh on Mac copy the script to `/usr/local/share/zsh/site-functions/_kubetail`.
+* For Ubuntu, copy the [kubetail.bash](https://raw.githubusercontent.com/johanhaleby/kubetail/master/completion/kubetail.bash) script to `/etc/bash_completion.d/`. 
+* For zsh on Mac copy the [kubetail.zsh](https://raw.githubusercontent.com/johanhaleby/kubetail/master/completion/kubetail.zsh) script to `/usr/local/share/zsh/site-functions/_kubetail`.
 
 Don't forget to restart your terminal afterwards.
 
