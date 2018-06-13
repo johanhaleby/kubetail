@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 
 readonly PROGNAME=$(basename $0)
