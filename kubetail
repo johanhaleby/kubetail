@@ -32,6 +32,7 @@ since="${default_since}"
 version="1.6.1-SNAPSHOT"
 dryrun=false
 cluster=""
+namespace_arg=""
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
 
@@ -113,9 +114,10 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-n|--namespace)
 			if [ -z "$2" ]; then
-				namespace="${default_namespace}"
+				# using namespace from context
+				:
 			else
-				namespace="$2"
+				namespace_arg="--namespace $2"
 			fi
 			;;
 		-b|--line-buffered)
@@ -210,7 +212,7 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" --namespace=${namespace} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
+matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -248,7 +250,7 @@ trap kill_kubectl_processes EXIT
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(${KUBECTL_BIN} get pod ${pod} ${context:+--context=${context}} --output=jsonpath='{.spec.containers[*].name}' --namespace=${namespace} ${cluster} | xargs -n1))
+		pod_containers=($(${KUBECTL_BIN} get pod ${pod} ${context:+--context=${context}} --output=jsonpath='{.spec.containers[*].name}' ${namespace_arg} ${cluster} | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
@@ -274,7 +276,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f --since=${since} --tail=${tail} --namespace=${namespace} ${cluster}"
+		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
