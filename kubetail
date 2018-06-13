@@ -114,8 +114,8 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-n|--namespace)
 			if [ -z "$2" ]; then
-				# namespace="${default_namespace}"
-        echo "using namespace from context"
+				# using namespace from context
+				:
 			else
 				namespace_arg="--namespace $2"
 			fi
