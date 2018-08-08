@@ -6,6 +6,7 @@ readonly PROGNAME=$(basename $0)
 
 default_since="${KUBETAIL_SINCE:-10s}"
 default_namespace="${KUBETAIL_NAMESPACE:-default}"
+default_follow="${KUBETAIL_FOLLOW:-true}"
 default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
 default_colored_output="${KUBETAIL_COLORED_OUTPUT:-line}"
 default_timestamps="${KUBETAIL_TIMESTAMPS:-}"
@@ -14,6 +15,7 @@ default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
 default_tail="${KUBETAIL_TAIL:--1}"
 
 namespace="${default_namespace}"
+follow="${default_follow}"
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
@@ -43,6 +45,7 @@ where:
     -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector       Label selector. If used the pod name is ignored.
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
+    -f, --follow         Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run        Print the names of the matched pods and containers, then exit.
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
@@ -118,6 +121,11 @@ if [ "$#" -ne 0 ]; then
 				:
 			else
 				namespace_arg="--namespace $2"
+			fi
+			;;
+		-f|--follow)
+			if [ "$2" = "false" ]; then
+				follow="false"
 			fi
 			;;
 		-b|--line-buffered)
@@ -222,7 +230,7 @@ fi
 
 color_end=$(tput sgr0)
 
-# Wrap all pod names in the "kubectl logs <name> -f" command
+# Wrap all pod names in the "kubectl logs <name> -f=true/false" command
 display_names_preview=()
 pod_logs_commands=()
 i=0
@@ -276,7 +284,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
@@ -305,4 +313,10 @@ join command_to_tail " & " "${logs_commands[@]}"
 
 # Aggregate all logs and print to stdout
 # Note that tail +1f doesn't work on some Linux distributions so we use this slightly longer alternative
-tail -f -n +1 <( eval "${command_to_tail}" ) $line_buffered
+# Note that if --follow=false, then the tail command should also not be followed
+tail_follow_command="-f"
+if [[ ${follow} == false ]];
+then
+	tail_follow_command=""
+fi
+tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
