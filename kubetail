@@ -44,22 +44,22 @@ where:
                          Defaults to all containers in the pod. Can be used multiple times.
     -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector       Label selector. If used the pod name is ignored.
-    -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"default\")
+    -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
     -f, --follow         Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run        Print the names of the matched pods and containers, then exit.
-    -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to 10s.
+    -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -e, --regex          The type of name matching to use (regex|substring)
     -j, --jq             If your output is json - use this jq-selector to parse it.
                          example: --jq \".logger + \\\" \\\" + .message\"
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color pod name, line = color entire line, false = don't use any colors.
-                         Defaults to line.
+                         Defaults to ${default_colored_output}.
     -z, --skip-colors    Comma-separated list of colors to not use in output
                          If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
-                         Defaults to: 7,8
+                         Defaults to: ${default_skip_colors}
         --timestamps     Show timestamps for each log line
-        --tail           Lines of recent log file to display. Defaults to -1, showing all log lines.
+        --tail           Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
     -v, --version        Prints the kubetail version
     -r, --cluster        The name of the kubeconfig cluster to use.
 
