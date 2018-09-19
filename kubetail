@@ -257,12 +257,12 @@ function kill_kubectl_processes {
 trap kill_kubectl_processes EXIT
 
 # Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
-all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n {end}"`)
+all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
 
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(echo -e "$all_pods_containers" | grep $pod | cut -d ' ' -f3- | xargs -n1))
+		pod_containers=($(echo -e "$all_pods_containers" | grep $pod | cut -d ' ' -f2- | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
