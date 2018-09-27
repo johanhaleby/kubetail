@@ -5,5 +5,5 @@ _kubetail()
   COMPREPLY=( $(compgen -W "$(kubectl get pods --no-headers | awk '{print $1}')" -- $curr_arg ) );
 }
 
-complete -F _kubetail kubetail
+complete -F _kubetail kubetail kt
 
