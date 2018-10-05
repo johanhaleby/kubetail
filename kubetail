@@ -288,7 +288,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$line ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+		kubectl_cmd="while true ; do ${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --since=${since} --tail=${tail} ${namespace_arg} ${cluster} ; sleep 1 ; done"
 		colorify_lines_cmd="while read line; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
