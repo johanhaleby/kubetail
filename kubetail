@@ -224,7 +224,7 @@ matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${sele
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
-	echo "No pods exists that matches ${pod}"
+	echo "No pod exists that matches ${pod}"
 	exit 1
 fi
 
