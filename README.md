@@ -21,6 +21,44 @@ Note that you may need to run `compinit` for zsh to pick-up the changes in compe
 
 Use `brew install --HEAD kubetail` to install the latest (unreleased) version.
 
+### ZSH plugin
+
+If you're using a ZSH plugin manager, you can install `kubetail` as a plugin.
+
+#### Antigen
+
+If you're using [Antigen](https://github.com/zsh-users/antigen):
+
+1. Add `antigen bundle johanhaleby/kubetail` to your `.zshrc` where you've listed your other plugins.
+2. Close and reopen your Terminal/iTerm window to **refresh context** and use the plugin. Alternatively, you can run `antigen bundle johanhaleby/kubetail` in a running shell to have `antigen` load the new plugin.
+
+#### oh-my-zsh
+
+If you're using [oh-my-zsh](github.com/robbyrussell/oh-my-zsh):
+
+1. In the command line, change to _oh-my-zsh_'s custom plugin directory :
+
+    `cd ~/.oh-my-zsh/custom/plugins/`
+
+2. Clone the repository into a new `kubetail` directory:
+
+    `git clone https://github.com/johanhaleby/kubetail.git kubetail`
+
+3. Edit your `~/.zshrc` and add `kubetail` – same as clone directory – to the list of plugins to enable:
+
+    `plugins=( ... kubetail )`
+
+4. Then, restart your terminal application to **refresh context** and use the plugin. Alternatively, you can source your current shell configuration:
+
+    `source ~/.zshrc`
+
+#### zgen
+
+If you're using [zgen](https://github.com/tarjoilija/zgen):
+
+1. Add `zgen load johanhaleby/kubetail` to your `.zshrc` along with your other `zgen load` commands.
+2. `zgen reset && zgen save`
+
 ### Completion
 
 The easiest option is to install kubetail from homebrew to dynamically display the pods names on `$ kubetail <tab>`. Alternatively install any of the [completion scripts](completion/) (bash/zsh/fish) manually. For example:
