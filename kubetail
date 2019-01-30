@@ -4,6 +4,7 @@ KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 
 readonly PROGNAME=$(basename $0)
 
+default_previous="${KUBETAIL_PREVIOUS:-false}"
 default_since="${KUBETAIL_SINCE:-10s}"
 default_namespace="${KUBETAIL_NAMESPACE:-default}"
 default_follow="${KUBETAIL_FOLLOW:-true}"
@@ -30,13 +31,14 @@ fi
 containers=()
 selector=()
 regex='substring'
+previous="${default_previous}"
 since="${default_since}"
 version="1.6.7-SNAPSHOT"
 dryrun=false
 cluster=""
 namespace_arg=""
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help           Show this help text
@@ -47,6 +49,7 @@ where:
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
     -f, --follow         Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run        Print the names of the matched pods and containers, then exit.
+    -p, --previous       Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
     -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
     -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
     -e, --regex          The type of name matching to use (regex|substring)
@@ -107,6 +110,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-d|--dry-run)
 			dryrun=true
+			;;
+		-p|--previous)
+			previous=true
 			;;
 		-s|--since)
 			if [ -z "$2" ]; then
@@ -196,10 +202,10 @@ function is_regex_matching() {
 	"${regex}" == 'regex'
 }
 
-# Check if pod query contains a comma and we've not specified "regex" explicitly, 
+# Check if pod query contains a comma and we've not specified "regex" explicitly,
 # if so we convert the pod query string into a regex that matches all pods seperated by the comma
 if [[ "${pod}" = *","* ]] && [ ! "${regex}" == 'regex' ]; then
-	
+
 	# Split the supplied query string (in variable pod) by comma into an array named "pods_to_match"
 	IFS=',' read -r -a pods_to_match <<< "${pod}"
 
@@ -288,7 +294,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$REPLY ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
