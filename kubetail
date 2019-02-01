@@ -179,7 +179,7 @@ if [ "$#" -ne 0 ]; then
         	if [ -z "$2" ]; then
                 sed_command=""
             else
-				sed_command="sed '$2'"
+				sed_command=${sed_command}" -e '$2'"
 			fi
 			;;
 		--)
@@ -341,5 +341,5 @@ fi
 if [ "${sed_command}" = "" ]; then
     tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
 else
-    tail ${tail_follow_command} -n +1 | eval "${sed_command}" <( eval "${command_to_tail}" ) $line_buffered 
+    tail ${tail_follow_command} -n +1 | eval "sed ${sed_command}" <( eval "${command_to_tail}" ) $line_buffered 
 fi
