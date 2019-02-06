@@ -65,7 +65,7 @@ where:
         --tail           Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
     -v, --version        Prints the kubetail version
     -r, --cluster        The name of the kubeconfig cluster to use.
-	-sed, --sed          Manipulate lines using sed. ex) -sed 's/foo/bar/g'
+    -sed, --sed          Manipulate lines using sed. ex) -sed 's/foo/bar/g'
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -175,11 +175,11 @@ if [ "$#" -ne 0 ]; then
 			    tail="$2"
 			fi
 			;;
-		 -sed|--sed)
-        	if [ -z "$2" ]; then
-                sed_command=""
-            else
-				sed_command=${sed_command}" -e '$2'"
+		-sed|--sed)
+			if [ -z "$2" ]; then
+			    sed_command=""
+			else
+			    sed_command=${sed_command}" -e '$2'"
 			fi
 			;;
 		--)
@@ -339,7 +339,7 @@ then
 fi
 
 if [ "${sed_command}" = "" ]; then
-    tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+	tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
 else
-    tail ${tail_follow_command} -n +1 | eval "sed ${sed_command}" <( eval "${command_to_tail}" ) $line_buffered 
+	tail ${tail_follow_command} -n +1 | eval "sed ${sed_command}" <( eval "${command_to_tail}" ) $line_buffered 
 fi
