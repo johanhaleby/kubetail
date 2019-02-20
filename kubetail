@@ -29,6 +29,7 @@ then
     pod="${1}"
 fi
 containers=()
+container_pattern=".*"
 selector=()
 regex='substring'
 previous="${default_previous}"
@@ -44,6 +45,7 @@ where:
     -h, --help           Show this help text
     -c, --container      The name of the container to tail in the pod (if multiple containers are defined in the pod).
                          Defaults to all containers in the pod. Can be used multiple times.
+    -C, --container-pattern Pattern to used to filter containers from a pod.
     -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector       Label selector. If used the pod name is ignored.
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
@@ -94,6 +96,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-c|--container)
 			containers+=("$2")
+			;;
+		-C|--container-pattern)
+			container_pattern="$2"
 			;;
 		-e|--regex)
 			regex="regex"
@@ -274,6 +279,9 @@ for pod in ${matching_pods[@]}; do
 	fi
 
 	for container in ${pod_containers[@]}; do
+		if [[ ! ${container} =~ ${container_pattern} ]]; then
+			continue
+		fi
 		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
 			color_start=$(tput sgr0)
 		else
