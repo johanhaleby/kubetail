@@ -36,7 +36,7 @@ since="${default_since}"
 version="1.6.8-SNAPSHOT"
 dryrun=false
 cluster=""
-namespace_arg=""
+namespace_arg="-n ${default_namespace}"
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
 
