@@ -6,7 +6,7 @@ readonly PROGNAME=$(basename $0)
 
 default_previous="${KUBETAIL_PREVIOUS:-false}"
 default_since="${KUBETAIL_SINCE:-10s}"
-default_namespace="${KUBETAIL_NAMESPACE:-default}"
+default_namespace="${KUBETAIL_NAMESPACE:-$(${KUBECTL_BIN} config view --minify --output 'jsonpath={..namespace}')}"
 default_follow="${KUBETAIL_FOLLOW:-true}"
 default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
 default_colored_output="${KUBETAIL_COLORED_OUTPUT:-line}"
