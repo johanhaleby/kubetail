@@ -42,6 +42,7 @@ version="1.6.9-SNAPSHOT"
 dryrun=false
 cluster=""
 namespace_arg="-n ${default_namespace}"
+kubeconfig_arg=""
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
 
@@ -49,7 +50,8 @@ where:
     -h, --help           Show this help text
     -c, --container      The name of the container to tail in the pod (if multiple containers are defined in the pod).
                          Defaults to all containers in the pod. Can be used multiple times.
-    -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+    -t, --context        The k8s context. ex. int1-context. Relies on kubeconfig file for the contexts.
+        --kubeconfig     Path to the kubeconfig file to use.
     -l, --selector       Label selector. If used the pod name is ignored.
     -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
     -f, --follow         Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
@@ -105,6 +107,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-t|--context)
 			context="$2"
+			;;
+		--kubeconfig)
+			kubeconfig_arg="--kubeconfig $2"
 			;;
 		-r|--cluster)
 			cluster="--cluster $2"
@@ -231,7 +236,7 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
+matching_pods=(`${KUBECTL_BIN} get pods ${kubeconfig_arg} ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -268,7 +273,7 @@ function kill_kubectl_processes {
 trap kill_kubectl_processes EXIT
 
 # Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
-all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
+all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${kubeconfig_arg} ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
 
 
 for pod in ${matching_pods[@]}; do
@@ -299,7 +304,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${display_name}] \$REPLY ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+		kubectl_cmd="${KUBECTL_BIN} ${kubeconfig_arg} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
