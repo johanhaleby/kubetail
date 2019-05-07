@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 
 readonly PROGNAME=$(basename $0)
@@ -239,7 +239,7 @@ mkfifo matching_pods_pipe.$$
 			PODS=$(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}");
 			if [ "$PODS" != "$PREVIOUS_PODS" ]; then
 				printf -v pods_string '%q' "${PODS[@]}"
-				echo "$pods_string" > matching_pods_pipe.$$
+				echo "$pods_string" > /tmp/kubetail-matching_pods_pipe.$$
 				PREVIOUS_PODS=$PODS
 			fi
 			sleep 1
@@ -275,7 +275,7 @@ function kill_kubectl_processes {
 trap kill_kubectl_processes EXIT
 
 
-while readarray matching_pods_raw <matching_pods_pipe.$$;
+while readarray matching_pods_raw </tmp/kubetail-matching_pods_pipe.$$;
 do
 	matching_pods=$(eval "echo $matching_pods_raw")
 	matching_pods_size=${#matching_pods[@]}
@@ -349,5 +349,4 @@ do
 	
 	kill %t 2>/dev/null
 	tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered&
-	# jobs
 done
