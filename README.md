@@ -21,6 +21,21 @@ Note that you may need to run `compinit` for zsh to pick-up the changes in compe
 
 Use `brew install --HEAD kubetail` to install the latest (unreleased) version.
 
+### ASDF
+
+You can install kubetail using the [asdf](https://github.com/asdf-vm/asdf) version manager.
+
+```
+asdf plugin-add kubetail https://github.com/janpieper/asdf-kubetail.git
+asdf install kubetail <version>
+```
+
+To find out the available versions to install, you can run the following command:
+
+```
+asdf list-all kubetail
+```
+
 ### ZSH plugin
 
 If you're using a ZSH plugin manager, you can install `kubetail` as a plugin.
