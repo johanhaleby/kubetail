@@ -192,6 +192,13 @@ if [ "$#" -ne 0 ]; then
 	done
 fi
 
+readarray() {
+  local i=0
+  unset -v "$1"
+  while IFS= read -r "$1[i++]"; do :; done
+  eval "[[ \${$1[--i]} ]]" || unset "$1[i]"
+}
+
 # Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
 	# $1 is return variable name
@@ -229,7 +236,8 @@ if [ "${regex}" == 'regex' ]; then
 	grep_matcher='-E'
 fi
 
-mkfifo /tmp/kubetail-matching_pods_pipe.$$
+matching_pods_pipe="/tmp/kubetail-matching_pods_pipe.$$"
+mkfifo $matching_pods_pipe
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
 (
 	PODS=()
@@ -239,12 +247,12 @@ mkfifo /tmp/kubetail-matching_pods_pipe.$$
 			PODS=$(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}");
 			if [ "$PODS" != "$PREVIOUS_PODS" ]; then
 				printf -v pods_string '%q' "${PODS[@]}"
-				echo "$pods_string" > /tmp/kubetail-matching_pods_pipe.$$
+				echo "$pods_string" > $matching_pods_pipe
 				PREVIOUS_PODS=$PODS
 			fi
 			sleep 1
 		done
-		)&
+)&
 
 color_end=$(tput sgr0)
 
@@ -266,6 +274,7 @@ fi
 
 # Function that kills all kubectl processes that are started by kubetail in the background
 function kill_kubectl_processes {
+	rm $matching_pods_pipe
 	kill 0
 }
 
@@ -275,7 +284,7 @@ function kill_kubectl_processes {
 trap kill_kubectl_processes EXIT
 
 
-while readarray matching_pods_raw </tmp/kubetail-matching_pods_pipe.$$;
+while readarray matching_pods_raw <$matching_pods_pipe;
 do
 	matching_pods=$(eval "echo $matching_pods_raw")
 	matching_pods_size=${#matching_pods[@]}
