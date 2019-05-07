@@ -229,7 +229,7 @@ if [ "${regex}" == 'regex' ]; then
 	grep_matcher='-E'
 fi
 
-mkfifo matching_pods_pipe.$$
+mkfifo /tmp/kubetail-matching_pods_pipe.$$
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
 (
 	PODS=()
