@@ -1,5 +1,4 @@
 #!/bin/bash
-
 KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 
 readonly PROGNAME=$(basename $0)
@@ -193,6 +192,13 @@ if [ "$#" -ne 0 ]; then
 	done
 fi
 
+readarray() {
+  local i=0
+  unset -v "$1"
+  while IFS= read -r "$1[i++]"; do :; done
+  eval "[[ \${$1[--i]} ]]" || unset "$1[i]"
+}
+
 # Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
 	# $1 is return variable name
@@ -230,14 +236,23 @@ if [ "${regex}" == 'regex' ]; then
 	grep_matcher='-E'
 fi
 
+matching_pods_pipe="/tmp/kubetail-matching_pods_pipe.$$"
+mkfifo $matching_pods_pipe
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}"`)
-matching_pods_size=${#matching_pods[@]}
-
-if [ ${matching_pods_size} -eq 0 ]; then
-	echo "No pod exists that matches ${pod}"
-	exit 1
-fi
+(
+	PODS=()
+	PREVIOUS_PODS=()
+	while true;
+		do 
+			PODS=$(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep $grep_matcher "${pod}");
+			if [ "$PODS" != "$PREVIOUS_PODS" ]; then
+				printf -v pods_string '%q' "${PODS[@]}"
+				echo "$pods_string" > $matching_pods_pipe
+				PREVIOUS_PODS=$PODS
+			fi
+			sleep 1
+		done
+)&
 
 color_end=$(tput sgr0)
 
@@ -259,6 +274,7 @@ fi
 
 # Function that kills all kubectl processes that are started by kubetail in the background
 function kill_kubectl_processes {
+	rm $matching_pods_pipe
 	kill 0
 }
 
@@ -267,71 +283,79 @@ function kill_kubectl_processes {
 # (for example when running "kubetail something -c non_matching")
 trap kill_kubectl_processes EXIT
 
-# Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
-all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
 
+while readarray matching_pods_raw <$matching_pods_pipe;
+do
+	matching_pods=$(eval "echo $matching_pods_raw")
+	matching_pods_size=${#matching_pods[@]}
+	logs_commands=()
+	display_names_preview=()
+	# Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
+	all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
+	for pod in ${matching_pods[@]}; do
+		if [ ${#containers[@]} -eq 0 ]; then
+			pod_containers=($(echo -e "$all_pods_containers" | grep $pod | cut -d ' ' -f2- | xargs -n1))
+		else
+			pod_containers=("${containers[@]}")
+		fi
 
-for pod in ${matching_pods[@]}; do
-	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(echo -e "$all_pods_containers" | grep $pod | cut -d ' ' -f2- | xargs -n1))
-	else
-		pod_containers=("${containers[@]}")
+		for container in ${pod_containers[@]}; do
+			if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
+				color_start=$(tput sgr0)
+			else
+				color_index=`next_col $color_index`
+				color_start=$(tput setaf $color_index)
+			fi
+
+			if [ ${#pod_containers[@]} -eq 1 ]; then
+				display_name="${pod}"
+			else
+				display_name="${pod} ${container}"
+			fi
+			display_names_preview+=("${color_start}${display_name}${color_end}")
+
+			if [ ${colored_output} == "pod" ]; then
+				colored_line="${color_start}[${display_name}]${color_end} \$REPLY"
+			else
+				colored_line="${color_start}[${display_name}] \$REPLY ${color_end}"
+			fi
+
+			kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+			colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
+			if [ "z" == "z$jq_selector" ]; then
+				logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
+			else
+				logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}");
+			fi
+
+			# There are only 11 usable colors
+			i=$(( ($i+1)%13 ))
+		done
+	done
+
+	# Preview pod colors
+	echo "Will tail ${#display_names_preview[@]} logs..."
+	for preview in "${display_names_preview[@]}"; do
+		echo "$preview"
+	done
+
+	if [[ ${dryrun} == true ]];
+	then
+	exit 0
 	fi
 
-	for container in ${pod_containers[@]}; do
-		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
-			color_start=$(tput sgr0)
-		else
-			color_index=`next_col $color_index`
-			color_start=$(tput setaf $color_index)
-		fi
+	# Join all log commands into one string separated by " & "
+	join command_to_tail " & " "${logs_commands[@]}"
 
-		if [ ${#pod_containers[@]} -eq 1 ]; then
-			display_name="${pod}"
-		else
-			display_name="${pod} ${container}"
-		fi
-		display_names_preview+=("${color_start}${display_name}${color_end}")
-
-		if [ ${colored_output} == "pod" ]; then
-			colored_line="${color_start}[${display_name}]${color_end} \$REPLY"
-		else
-			colored_line="${color_start}[${display_name}] \$REPLY ${color_end}"
-		fi
-
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
-		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
-		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
-		else
-			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}");
-		fi
-
-		# There are only 11 usable colors
-		i=$(( ($i+1)%13 ))
-	done
+	# Aggregate all logs and print to stdout
+	# Note that tail +1f doesn't work on some Linux distributions so we use this slightly longer alternative
+	# Note that if --follow=false, then the tail command should also not be followed
+	tail_follow_command="-f"
+	if [[ ${follow} == false ]];
+	then
+		tail_follow_command=""
+	fi
+	
+	kill %t 2>/dev/null
+	tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered&
 done
-
-# Preview pod colors
-echo "Will tail ${#display_names_preview[@]} logs..."
-for preview in "${display_names_preview[@]}"; do
-	echo "$preview"
-done
-
-if [[ ${dryrun} == true ]];
-then
-  exit 0
-fi
-
-# Join all log commands into one string separated by " & "
-join command_to_tail " & " "${logs_commands[@]}"
-
-# Aggregate all logs and print to stdout
-# Note that tail +1f doesn't work on some Linux distributions so we use this slightly longer alternative
-# Note that if --follow=false, then the tail command should also not be followed
-tail_follow_command="-f"
-if [[ ${follow} == false ]];
-then
-	tail_follow_command=""
-fi
-tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
