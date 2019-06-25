@@ -291,9 +291,16 @@ for pod in ${matching_pods[@]}; do
 		else
 			display_name="${pod} ${container}"
 		fi
-		display_names_preview+=("${color_start}${display_name}${color_end}")
 
-		if [ ${colored_output} == "pod" ]; then
+		if [ ${colored_output} == "false" ]; then
+			display_names_preview+=("${display_name}")
+		else
+			display_names_preview+=("${color_start}${display_name}${color_end}")
+		fi
+
+		if [ ${colored_output} == "false" ]; then
+			colored_line="[${display_name}] \$REPLY"
+		elif [ ${colored_output} == "pod" ]; then
 			colored_line="${color_start}[${display_name}]${color_end} \$REPLY"
 		else
 			colored_line="${color_start}[${display_name}] \$REPLY ${color_end}"
