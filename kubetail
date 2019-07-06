@@ -80,11 +80,6 @@ examples:
     ${PROGNAME} --selector service=my-service --since 10m
     ${PROGNAME} --tail 1"
 
-if [ $# -eq 0 ]; then
-	echo "$usage"
-	exit 1
-fi
-
 if [ "$#" -ne 0 ]; then
 	while [ "$#" -gt 0 ]
 	do
@@ -191,6 +186,9 @@ if [ "$#" -ne 0 ]; then
 		esac
 		shift
 	done
+else
+	echo "$usage"
+	exit 1
 fi
 
 # Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
