@@ -17,6 +17,7 @@ default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
 default_colored_output="${KUBETAIL_COLORED_OUTPUT:-line}"
 default_timestamps="${KUBETAIL_TIMESTAMPS:-}"
 default_jq_selector="${KUBETAIL_JQ_SELECTOR:-}"
+default_grep_selector="${KUBETAIL_GREP_SELECTOR:-}"
 default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
 default_tail="${KUBETAIL_TAIL:--1}"
 
@@ -26,6 +27,7 @@ line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
 jq_selector="${default_jq_selector}"
+grep_selector="${default_grep_selector}"
 skip_colors="${default_skip_colors}"
 tail="${default_tail}"
 
@@ -60,6 +62,8 @@ where:
     -e, --regex          The type of name matching to use (regex|substring)
     -j, --jq             If your output is json - use this jq-selector to parse it.
                          example: --jq \".logger + \\\" \\\" + .message\"
+    -g, --grep           Use grep to parse logs stream output.
+                         example: --grep \"ERROR\" or --grep \"\-v ERROR\" or --grep \"\-i ERROR\"
     -k, --colored-output Use colored output (pod|line|false).
                          pod = only color pod name, line = color entire line, false = don't use any colors.
                          Defaults to ${default_colored_output}.
@@ -153,6 +157,13 @@ if [ "$#" -ne 0 ]; then
 				jq_selector="$2"
 			fi
 			;;
+                -g|--grep)
+                        if [ -z "$2" ]; then
+                                grep_selector="${default_grep_selector}"
+                        else
+                                grep_selector="| grep --line-buffered ${2}"
+                        fi
+                        ;;
 		-z|--skip-colors)
 			if [ -z "$2" ]; then
 				skip_colors="${default_skip_colors}"
@@ -305,11 +316,13 @@ for pod in ${matching_pods[@]}; do
 		fi
 
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+
+
 		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
+			logs_commands+=("${kubectl_cmd} ${timestamps} ${grep_selector} | ${colorify_lines_cmd}");
 		else
-			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}");
+			logs_commands+=("${kubectl_cmd} ${grep_selector} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}");
 		fi
 
 		# There are only 11 usable colors
