@@ -43,7 +43,7 @@ dryrun=false
 cluster=""
 namespace_arg="-n ${default_namespace}"
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-sed] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help           Show this help text
@@ -70,6 +70,7 @@ where:
         --tail           Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
     -v, --version        Prints the kubetail version
     -r, --cluster        The name of the kubeconfig cluster to use.
+    -sed, --sed          Manipulate lines using sed. ex) -sed 's/foo/bar/g'
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -172,6 +173,13 @@ if [ "$#" -ne 0 ]; then
 			    tail="${default_tail}"
 			else
 			    tail="$2"
+			fi
+			;;
+		-sed|--sed)
+			if [ -z "$2" ]; then
+			    sed_command=""
+			else
+			    sed_command=${sed_command}" -e '$2'"
 			fi
 			;;
 		--)
@@ -339,4 +347,9 @@ if [[ ${follow} == false ]];
 then
 	tail_follow_command=""
 fi
-tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+
+if [ "${sed_command}" = "" ]; then
+	tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+else
+	tail ${tail_follow_command} -n +1 | eval "sed ${sed_command}" <( eval "${command_to_tail}" ) $line_buffered 
+fi
