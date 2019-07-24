@@ -293,7 +293,7 @@ for pod in ${matching_pods[@]}; do
 		if [ ${colored_output} == "false" ]; then
 			display_names_preview+=("${display_name}")
 		else
-			display_names_preview+=("${color_start}${display_name}${color_end}")
+			display_names_preview+=("${color_start}${display_name}${color_end} - color: $color_index")
 		fi
 
 		if [ ${colored_output} == "false" ]; then
