@@ -293,15 +293,15 @@ for pod in ${matching_pods[@]}; do
 		if [ ${colored_output} == "false" ]; then
 			display_names_preview+=("${display_name}")
 		else
-			display_names_preview+=("${color_start}${display_name}${color_end} - color: $color_index")
+			display_names_preview+=("$color_index:${color_start}${display_name}${color_end}")
 		fi
 
 		if [ ${colored_output} == "false" ]; then
 			colored_line="[${display_name}] \$REPLY"
 		elif [ ${colored_output} == "pod" ]; then
-			colored_line="${color_start}[${display_name}]${color_end} \$REPLY"
+			colored_line="${color_start}[${color_end}${color_index}:${color_start}${display_name}]${color_end} \$REPLY"
 		else
-			colored_line="${color_start}[${display_name}] \$REPLY ${color_end}"
+			colored_line="${color_start}[${color_end}${color_index}:${color_start}${display_name}] \$REPLY ${color_end}"
 		fi
 
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
