@@ -140,7 +140,8 @@ By using the `-k` argument you can specify how kubetail makes use of colors (onl
 Example:
 
 	$ kubetail app2 -k false
-	
+
+When multiple pods are being tailed and colored output is not set to false then you will see the color numbers used for each pod during the preview stage before the tailing of the logs begin. If there are any numbers that are difficult to see then they can be added to the colors to skip either by setting those using the `-z` command or by setting the `KUBETAIL_SKIP_COLORS` environment variable (either choice could be comma seperated).
 	
 ## Filtering / Highlighting etc
 
