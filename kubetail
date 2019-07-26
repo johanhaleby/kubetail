@@ -19,6 +19,7 @@ default_timestamps="${KUBETAIL_TIMESTAMPS:-}"
 default_jq_selector="${KUBETAIL_JQ_SELECTOR:-}"
 default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
 default_tail="${KUBETAIL_TAIL:--1}"
+default_show_color_index="${KUBETAIL_SHOW_COLOR_INDEX:-false}"
 
 namespace="${default_namespace}"
 follow="${default_follow}"
@@ -28,6 +29,7 @@ timestamps="${default_timestamps}"
 jq_selector="${default_jq_selector}"
 skip_colors="${default_skip_colors}"
 tail="${default_tail}"
+show_color_index="${default_show_color_index}"
 
 if [[ ${1} != -* ]]
 then
@@ -43,33 +45,38 @@ dryrun=false
 cluster=""
 namespace_arg="-n ${default_namespace}"
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
 
 where:
-    -h, --help           Show this help text
-    -c, --container      The name of the container to tail in the pod (if multiple containers are defined in the pod).
-                         Defaults to all containers in the pod. Can be used multiple times.
-    -t, --context        The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
-    -l, --selector       Label selector. If used the pod name is ignored.
-    -n, --namespace      The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
-    -f, --follow         Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
-    -d, --dry-run        Print the names of the matched pods and containers, then exit.
-    -p, --previous       Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
-    -s, --since          Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
-    -b, --line-buffered  This flags indicates to use line-buffered. Defaults to false.
-    -e, --regex          The type of name matching to use (regex|substring)
-    -j, --jq             If your output is json - use this jq-selector to parse it.
-                         example: --jq \".logger + \\\" \\\" + .message\"
-    -k, --colored-output Use colored output (pod|line|false).
-                         pod = only color pod name, line = color entire line, false = don't use any colors.
-                         Defaults to ${default_colored_output}.
-    -z, --skip-colors    Comma-separated list of colors to not use in output
-                         If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
-                         Defaults to: ${default_skip_colors}
-        --timestamps     Show timestamps for each log line
-        --tail           Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
-    -v, --version        Prints the kubetail version
-    -r, --cluster        The name of the kubeconfig cluster to use.
+    -h, --help              Show this help text
+    -c, --container         The name of the container to tail in the pod (if multiple containers are defined in the pod).
+                            Defaults to all containers in the pod. Can be used multiple times.
+    -t, --context           The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
+    -l, --selector          Label selector. If used the pod name is ignored.
+    -n, --namespace         The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
+    -f, --follow            Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
+    -d, --dry-run           Print the names of the matched pods and containers, then exit.
+    -p, --previous          Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
+    -s, --since             Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
+    -b, --line-buffered     This flags indicates to use line-buffered. Defaults to false.
+    -e, --regex             The type of name matching to use (regex|substring)
+    -j, --jq                If your output is json - use this jq-selector to parse it.
+                            example: --jq \".logger + \\\" \\\" + .message\"
+    -k, --colored-output    Use colored output (pod|line|false).
+                            pod = only color pod name, line = color entire line, false = don't use any colors.
+                            Defaults to ${default_colored_output}.
+    -z, --skip-colors       Comma-separated list of colors to not use in output
+                            If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
+                            Defaults to: ${default_skip_colors}
+        --timestamps        Show timestamps for each log line
+        --tail              Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
+    -v, --version           Prints the kubetail version
+    -r, --cluster           The name of the kubeconfig cluster to use.
+    -i, --show-color-index  Show the color index before the pod name prefix that is shown before each log line. 
+    						Normally only the pod name is added as a prefix before each line, for example \"[app-5b7ff6cbcd-bjv8n]\", 
+    						but if \"show-color-index\" is true then color index is added as well: \"[1:app-5b7ff6cbcd-bjv8n]\".
+                            This is useful if you have color blindness or if you want to know which colors to exclude (see \"--skip-colors\").
+                           	Defaults to ${default_show_color_index}.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -174,6 +181,13 @@ if [ "$#" -ne 0 ]; then
 			    tail="$2"
 			fi
 			;;
+		-i|--show-color-index)
+			if [ -z "$2" ]; then
+			    show_color_index="${default_show_color_index}"
+			else
+			    show_color_index="$2"
+			fi
+			;;
 		--)
 			break
 			;;
@@ -199,10 +213,6 @@ function join() {
 	local retname=$1 sep=$2 ret=$3
 	shift 3 || shift $(($#))
 	printf -v "$retname" "%s" "$ret${@/#/$sep}"
-}
-
-function is_regex_matching() {
-	"${regex}" == 'regex'
 }
 
 # Check if pod query contains a comma and we've not specified "regex" explicitly,
@@ -279,9 +289,11 @@ for pod in ${matching_pods[@]}; do
 	for container in ${pod_containers[@]}; do
 		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
 			color_start=$(tput sgr0)
+			color_index_prefix=""
 		else
 			color_index=`next_col $color_index`
 			color_start=$(tput setaf $color_index)
+			color_index_prefix=`if [ ${show_color_index} == "true" ]; then echo "${color_index}:"; else echo ""; fi`
 		fi
 
 		if [ ${#pod_containers[@]} -eq 1 ]; then
@@ -293,15 +305,16 @@ for pod in ${matching_pods[@]}; do
 		if [ ${colored_output} == "false" ]; then
 			display_names_preview+=("${display_name}")
 		else
-			display_names_preview+=("$color_index:${color_start}${display_name}${color_end}")
+			display_names_preview+=("$color_index_prefix${color_start}${display_name}${color_end}")
 		fi
 
 		if [ ${colored_output} == "false" ]; then
 			colored_line="[${display_name}] \$REPLY"
 		elif [ ${colored_output} == "pod" ]; then
-			colored_line="${color_start}[${color_end}${color_index}:${color_start}${display_name}]${color_end} \$REPLY"
+			colored_line="${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}]${color_end} \$REPLY"
 		else
-			colored_line="${color_start}[${color_end}${color_index}:${color_start}${display_name}] \$REPLY ${color_end}"
+			# color_index_prefix=`if [ ${show_color_index} == "true" ]; then echo "${color_index}:"; else echo ""; fi`
+			colored_line="${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}] \$REPLY ${color_end}"
 		fi
 
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
