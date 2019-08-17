@@ -161,6 +161,7 @@ kubetail can take default option values from environment variables matching the 
     KUBETAIL_JQ_SELECTOR
     KUBETAIL_SKIP_COLORS
     KUBETAIL_TAIL
+    KUBETAIL_SHOW_COLOR_INDEX
 
 ## More
 
