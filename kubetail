@@ -44,13 +44,14 @@ since="${default_since}"
 version="1.6.11-SNAPSHOT"
 dryrun=false
 cluster=""
-namespacesList=("${default_namespace}")
+namespaces_list=("${default_namespace}")
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help              Show this help text
     -a, --all-namespaces    Search to match into all namespaces
+							You can exclude some namespace by adding : --exclude-ns kube-default
     -c, --container         The name of the container to tail in the pod (if multiple containers are defined in the pod).
                             Defaults to all containers in the pod. Can be used multiple times.
     -t, --context           The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
@@ -82,7 +83,7 @@ where:
                            	Defaults to ${default_show_color_index}.
 examples:
     ${PROGNAME} my-pod-v1
-    ${PROGNAME} my-pod-v1 --all-namespaces
+    ${PROGNAME} my-pod-v1 --all-namespaces --exclude-ns kube-default,monitoring
     ${PROGNAME} my-pod-v1 -n namespace1,namespace2
     ${PROGNAME} my-pod-v1 -c my-container
     ${PROGNAME} my-pod-v1 -t int1-context -c my-container
@@ -101,6 +102,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-a|--all-namespaces)
 			all_namespaces=true
+			;;
+		--exclude-ns)
+			IFS=',' read -ra exclude_ns <<< "$2"
 			;;
 		-v|--version)
 			echo "$version"
@@ -140,7 +144,7 @@ if [ "$#" -ne 0 ]; then
 				# using namespace from context
 				:
 			else
-				IFS=',' read -ra namespacesList <<< "$2"
+				IFS=',' read -ra namespaces_list <<< "$2"
 			fi
 			;;
 		-f|--follow)
@@ -245,17 +249,18 @@ if [ "${regex}" == 'regex' ]; then
 	grep_matcher='-E'
 fi
 
+if $all_namespaces; then
+	readarray namespaces_list < <(kubectl get namespaces --no-headers=true |awk '{print $1}')
+fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
 echo "Fetching pod list"
 matching_pods=()
-for namespace_name in ${namespacesList[@]}; do
-	if $all_namespaces; then
-		namespace_arg='--all-namespaces=true'
-	else
-		namespace_arg="-n ${namespace_name}"
+for namespace_name in ${namespaces_list[@]}; do
+	if [[ " ${exclude_ns[*]} " == *" ${namespace_name} "* ]]; then
+		break 
 	fi
-
+	namespace_arg="-n ${namespace_name}"
 	readarray pods < <(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath="{range .items[*]}{@.metadata.name}{' '}{@.metadata.namespace}{' '}{@.spec.containers[*].name}{' '}{@.spec.initContainers[*].name}{'\n'}{end}" | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}" )
 	matching_pods=("${matching_pods[@]}" "${pods[@]}")
 	
@@ -318,7 +323,7 @@ for pod in ${matching_pods[@]}; do
 			display_name="${pod_name} ${container}"
 		fi
 
- 		if $all_namespace
+ 		if [ ${#namespaces_list[@]} -gt 1 ]
 		then
 			display_name="${pod_namespace} ${pod_name} ${container}"
 		fi
