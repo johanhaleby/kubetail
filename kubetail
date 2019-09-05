@@ -253,13 +253,8 @@ fi
 
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-#matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}"`)
-
-
-#matching_pods1=`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}"`
-
 echo "Fetching pod list"
-readarray matching_pods < <(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}")
+readarray matching_pods < <(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{" "}{@.spec.containers[*].name}{" "}{@.spec.initContainers[*].name}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}")
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -295,21 +290,11 @@ function kill_kubectl_processes {
 # (for example when running "kubetail something -c non_matching")
 trap kill_kubectl_processes EXIT
 
-echo "Searching for match"
-
-# Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
-all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_match} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
-
 IFS=$'\n'
 for pod in ${matching_pods[@]}; do
         pod_name=$(echo $pod |awk '{print $1}')
-        pod_namespace="$(echo $pod |awk '{print $2}')"
-
-	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(echo -e "$all_pods_containers" | grep $pod_name | cut -d ' ' -f2- | xargs -n1))
-	else
-		pod_containers=("${containers[@]}")
-	fi
+        pod_namespace=$(echo $pod |awk '{print $2}')
+	pod_containers=($(echo -e "$pod" | cut -d ' ' -f3- | xargs -n1))
 
 	for container in ${pod_containers[@]}; do
 		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
