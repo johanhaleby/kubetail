@@ -82,6 +82,7 @@ where:
                            	Defaults to ${default_show_color_index}.
 examples:
     ${PROGNAME} my-pod-v1
+    ${PROGNAME} my-pod-v1 --all-namespaces
     ${PROGNAME} my-pod-v1 -n namespace1,namespace2
     ${PROGNAME} my-pod-v1 -c my-container
     ${PROGNAME} my-pod-v1 -t int1-context -c my-container
