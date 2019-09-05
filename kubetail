@@ -95,6 +95,9 @@ if [ "$#" -ne 0 ]; then
 			echo "$usage"
 			exit 0
 			;;
+		-a|--all-namespaces)
+			all_namespaces=true
+			;;
 		-v|--version)
 			echo "$version"
 			exit 0
@@ -238,8 +241,23 @@ if [ "${regex}" == 'regex' ]; then
 	grep_matcher='-E'
 fi
 
+
+if $all_namespaces
+then
+	namespace_match='--all-namespaces=true'
+else
+	namespace_match=$namespace_arg
+fi
+
+
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep --color=never $grep_matcher "${pod}"`)
+#matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}"`)
+
+
+#matching_pods1=`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}"`
+
+echo "Fetching pod list"
+readarray matching_pods < <(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}")
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -275,13 +293,18 @@ function kill_kubectl_processes {
 # (for example when running "kubetail something -c non_matching")
 trap kill_kubectl_processes EXIT
 
+echo "Searching for match"
+
 # Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
-all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
+all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_match} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
 
-
+IFS=$'\n'
 for pod in ${matching_pods[@]}; do
+        pod_name=$(echo $pod |awk '{print $1}')
+        pod_namespace="$(echo $pod |awk '{print $2}')"
+
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(echo -e "$all_pods_containers" | grep $pod | cut -d ' ' -f2- | xargs -n1))
+		pod_containers=($(echo -e "$all_pods_containers" | grep $pod_name | cut -d ' ' -f2- | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
@@ -297,9 +320,14 @@ for pod in ${matching_pods[@]}; do
 		fi
 
 		if [ ${#pod_containers[@]} -eq 1 ]; then
-			display_name="${pod}"
+			display_name="${pod_name}"
 		else
-			display_name="${pod} ${container}"
+			display_name="${pod_name} ${container}"
+		fi
+
+ 		if $all_namespace
+		then
+			display_name="${pod_namespace} ${pod_name} ${container}"
 		fi
 
 		if [ ${colored_output} == "false" ]; then
@@ -317,7 +345,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}] \$REPLY ${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod_name} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} -n ${pod_namespace} ${cluster}"
 		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
