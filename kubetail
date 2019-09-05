@@ -21,6 +21,7 @@ default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
 default_tail="${KUBETAIL_TAIL:--1}"
 default_show_color_index="${KUBETAIL_SHOW_COLOR_INDEX:-false}"
 
+all_namespaces=false
 namespace="${default_namespace}"
 follow="${default_follow}"
 line_buffered="${default_line_buffered}"
@@ -49,6 +50,7 @@ usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-
 
 where:
     -h, --help              Show this help text
+    -a, --all-namespaces    Search to match into all namespaces
     -c, --container         The name of the container to tail in the pod (if multiple containers are defined in the pod).
                             Defaults to all containers in the pod. Can be used multiple times.
     -t, --context           The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
