@@ -5,8 +5,8 @@ KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 readonly PROGNAME=$(basename $0)
 
 calculate_default_namespace() {
-    local config_namespace=$(${KUBECTL_BIN} config view --minify --output 'jsonpath={..namespace}')
-    echo "${KUBETAIL_NAMESPACE:-${config_namespace:-default}}"
+	local config_namespace=$(${KUBECTL_BIN} config view --minify --output 'jsonpath={..namespace}')
+	echo "${KUBETAIL_NAMESPACE:-${config_namespace:-default}}"
 }
 
 default_previous="${KUBETAIL_PREVIOUS:-false}"
@@ -34,7 +34,7 @@ show_color_index="${default_show_color_index}"
 
 if [[ ${1} != -* ]]
 then
-    pod="${1}"
+	pod="${1}"
 fi
 containers=()
 selector=()
@@ -44,7 +44,7 @@ since="${default_since}"
 version="1.6.11-SNAPSHOT"
 dryrun=false
 cluster=""
-namespace_arg="-n ${default_namespace}"
+namespacesList=("${default_namespace}")
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
 
@@ -56,6 +56,7 @@ where:
     -t, --context           The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector          Label selector. If used the pod name is ignored.
     -n, --namespace         The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
+                            You can locate pod in multiple namespaces with a coma.
     -f, --follow            Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run           Print the names of the matched pods and containers, then exit.
     -p, --previous          Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
@@ -79,9 +80,9 @@ where:
     						but if \"show-color-index\" is true then color index is added as well: \"[1:app-5b7ff6cbcd-bjv8n]\".
                             This is useful if you have color blindness or if you want to know which colors to exclude (see \"--skip-colors\").
                            	Defaults to ${default_show_color_index}.
-
 examples:
     ${PROGNAME} my-pod-v1
+    ${PROGNAME} my-pod-v1 -n namespace1,namespace2
     ${PROGNAME} my-pod-v1 -c my-container
     ${PROGNAME} my-pod-v1 -t int1-context -c my-container
     ${PROGNAME} '(service|consumer|thing)' -e regex
@@ -138,7 +139,7 @@ if [ "$#" -ne 0 ]; then
 				# using namespace from context
 				:
 			else
-				namespace_arg="--namespace $2"
+				IFS=',' read -ra namespacesList <<< "$2"
 			fi
 			;;
 		-f|--follow)
@@ -174,23 +175,23 @@ if [ "$#" -ne 0 ]; then
 			;;
 		--timestamps)
 			if [ "$2" = "false" ]; then
-			    timestamps="$1=$2"
+				timestamps="$1=$2"
 			else
-			    timestamps="$1"
+				timestamps="$1"
 			fi
 			;;
 		--tail)
 			if [ -z "$2" ]; then
-			    tail="${default_tail}"
+				tail="${default_tail}"
 			else
-			    tail="$2"
+				tail="$2"
 			fi
 			;;
 		-i|--show-color-index)
 			if [ -z "$2" ]; then
-			    show_color_index="${default_show_color_index}"
+				show_color_index="${default_show_color_index}"
 			else
-			    show_color_index="$2"
+				show_color_index="$2"
 			fi
 			;;
 		--)
@@ -201,7 +202,7 @@ if [ "$#" -ne 0 ]; then
 			exit 1
 			;;
 		# an option argument, continue
-		*)  ;;
+		*)	;;
 		esac
 		shift
 	done
@@ -244,17 +245,21 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 
-if $all_namespaces
-then
-	namespace_match='--all-namespaces=true'
-else
-	namespace_match=$namespace_arg
-fi
-
-
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
 echo "Fetching pod list"
-readarray matching_pods < <(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_match} ${cluster} --output=jsonpath='{range .items[*]}{@.metadata.name}{" "}{@.metadata.namespace}{" "}{@.spec.containers[*].name}{" "}{@.spec.initContainers[*].name}{"\n"}{end}' | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}")
+matching_pods=()
+for namespace_name in ${namespacesList[@]}; do
+	if $all_namespaces; then
+		namespace_arg='--all-namespaces=true'
+	else
+		namespace_arg="-n ${namespace_name}"
+	fi
+
+	readarray pods < <(${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --output=jsonpath="{range .items[*]}{@.metadata.name}{' '}{@.metadata.namespace}{' '}{@.spec.containers[*].name}{' '}{@.spec.initContainers[*].name}{'\n'}{end}" | xargs -d'\n' -n1 | grep --color=never $grep_matcher "${pod}" )
+	matching_pods=("${matching_pods[@]}" "${pods[@]}")
+	
+done
+
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -292,9 +297,9 @@ trap kill_kubectl_processes EXIT
 
 IFS=$'\n'
 for pod in ${matching_pods[@]}; do
-        pod_name=$(echo $pod |awk '{print $1}')
-        pod_namespace=$(echo $pod |awk '{print $2}')
-	pod_containers=($(echo -e "$pod" | cut -d ' ' -f3- | xargs -n1))
+		pod_name=$(echo $pod |awk '{print $1}')
+		pod_namespace=$(echo $pod |awk '{print $2}')
+		pod_containers=($(echo -e "$pod" | cut -d ' ' -f3- | xargs -n1))
 
 	for container in ${pod_containers[@]}; do
 		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
@@ -353,7 +358,7 @@ done
 
 if [[ ${dryrun} == true ]];
 then
-  exit 0
+	exit 0
 fi
 
 # Join all log commands into one string separated by " & "
