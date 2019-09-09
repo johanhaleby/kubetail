@@ -20,8 +20,6 @@ default_jq_selector="${KUBETAIL_JQ_SELECTOR:-}"
 default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
 default_tail="${KUBETAIL_TAIL:--1}"
 default_show_color_index="${KUBETAIL_SHOW_COLOR_INDEX:-false}"
-default_search_logs='cat -'
-default_exclude_logs='cat -'
 all_namespaces=false
 namespace="${default_namespace}"
 follow="${default_follow}"
@@ -46,8 +44,6 @@ version="1.6.11-SNAPSHOT"
 dryrun=false
 cluster=""
 namespaces_list=("${default_namespace}")
-search_logs="${default_search_logs}"
-exclude_logs="${default_exclude_logs}"
 
 usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
 
@@ -392,22 +388,24 @@ fi
 # POC
 ###
 
-[[ "${search_logs}" != "${default_search_logs}" ]] \
+[[ ! -z "${search_logs}" ]] \
 && join search_cmd " -e " "${search_logs[@]}" \
 && search_cmd="grep -e $search_cmd" \
-|| search_cmd="${search_logs}"
+&& exec 1> >(eval "${search_cmd}")
 
-[[ "${exclude_logs}" != "${default_exclude_logs}" ]] \
+[[ ! -z "${exclude_logs}" ]] \
 && join exclude_cmd " -v " "${exclude_logs[@]}" \
 && exclude_cmd="grep -v $exclude_cmd" \
-|| exclude_cmd="${exclude_logs}"
+&& exec 1> >(eval "${exclude_cmd}")
 
-( tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered ) >&1 | eval $search_cmd | eval $exclude_cmd
+[[ "$rsyslogd" = "true" ]] && exec 1> >(logger -s -t $(basename $0))
+
+
 
 ###
 ##
 #
 
-#tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered |cat -
 
 
