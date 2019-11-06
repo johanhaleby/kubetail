@@ -1,6 +1,13 @@
 #!/bin/bash
 
-KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
+if hash kubectl 2>/dev/null; then
+    KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
+elif hash kubectl.exe 2>/dev/null; then
+    KUBECTL_BIN=${KUBECTL_BIN:-"kubectl.exe"}
+else
+    echo >&2 "kubectl is not installed"
+    exit 1
+fi
 
 readonly PROGNAME=$(basename $0)
 
