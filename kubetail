@@ -11,13 +11,31 @@ fi
 
 readonly PROGNAME=$(basename $0)
 
+get_context() {
+	if [ "$#" -ne 0 ]; then
+		while [ "$#" -gt 0 ]
+		do
+			case "$1" in
+			-t|--context)
+				context="$2"
+				;;
+			esac
+			shift
+		done
+	fi
+}
+
 calculate_default_namespace() {
-    local config_namespace=$(${KUBECTL_BIN} config view --minify --output 'jsonpath={..namespace}')
+    local config_namespace=$(${KUBECTL_BIN} config view ${context:+--context=${context}} --minify --output 'jsonpath={..namespace}')
     echo "${KUBETAIL_NAMESPACE:-${config_namespace:-default}}"
 }
 
 default_previous="${KUBETAIL_PREVIOUS:-false}"
 default_since="${KUBETAIL_SINCE:-10s}"
+
+# Set $context before default namespace as the latter can be specified under specific context in .kube/config
+get_context "$@"
+
 default_namespace=$(calculate_default_namespace)
 default_follow="${KUBETAIL_FOLLOW:-true}"
 default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
@@ -79,8 +97,8 @@ where:
         --tail              Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
     -v, --version           Prints the kubetail version
     -r, --cluster           The name of the kubeconfig cluster to use.
-    -i, --show-color-index  Show the color index before the pod name prefix that is shown before each log line. 
-    						Normally only the pod name is added as a prefix before each line, for example \"[app-5b7ff6cbcd-bjv8n]\", 
+    -i, --show-color-index  Show the color index before the pod name prefix that is shown before each log line.
+    						Normally only the pod name is added as a prefix before each line, for example \"[app-5b7ff6cbcd-bjv8n]\",
     						but if \"show-color-index\" is true then color index is added as well: \"[1:app-5b7ff6cbcd-bjv8n]\".
                             This is useful if you have color blindness or if you want to know which colors to exclude (see \"--skip-colors\").
                            	Defaults to ${default_show_color_index}.
@@ -211,6 +229,7 @@ else
 	echo "$usage"
 	exit 1
 fi
+
 
 # Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
