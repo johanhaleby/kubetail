@@ -45,11 +45,11 @@ dryrun=false
 cluster=""
 namespaces_list=("${default_namespace}")
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-A] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
 
 where:
     -h, --help              Show this help text
-    -a, --all-namespaces    Search to match into all namespaces
+    -A, --all-namespaces    Search to match into all namespaces
 							You can exclude some namespace by adding : --exclude-ns kube-default
     -c, --container         The name of the container to tail in the pod (if multiple containers are defined in the pod).
                             Defaults to all containers in the pod. Can be used multiple times.
@@ -99,7 +99,7 @@ if [ "$#" -ne 0 ]; then
 			echo "$usage"
 			exit 0
 			;;
-		-a|--all-namespaces)
+		-A|--all-namespaces)
 			all_namespaces=true
 			;;
 		--exclude-ns)
