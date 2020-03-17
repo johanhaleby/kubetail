@@ -77,7 +77,7 @@ If you're using [zgen](https://github.com/tarjoilija/zgen):
 ### Completion
 
 The easiest option is to install kubetail from homebrew to dynamically display the pods names on `$ kubetail <tab>`. Alternatively install any of the [completion scripts](completion/) (bash/zsh/fish) manually. For example:
-* On Ubuntu, copy the [kubetail.bash](https://raw.githubusercontent.com/johanhaleby/kubetail/master/completion/kubetail.bash) script to `/etc/bash_completion.d/`. 
+* On Ubuntu, locate the [kubetail.bash](https://raw.githubusercontent.com/johanhaleby/kubetail/master/completion/kubetail.bash) script and execute it in your ~/.bash_completion file `source $HOME/kubetail/completion/kubetail.bash`. 
 * On Mac with zsh copy the [kubetail.zsh](https://raw.githubusercontent.com/johanhaleby/kubetail/master/completion/kubetail.zsh) script to `/usr/local/share/zsh/site-functions/_kubetail`.
 * On Mac with fish copy the [kubetail.fish](https://raw.githubusercontent.com/johanhaleby/kubetail/master/completion/kubetail.fish) script to `~/.config/fish/completions/`.
 
