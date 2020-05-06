@@ -327,9 +327,9 @@ for pod in ${matching_pods[@]}; do
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
+			logs_commands+=("(${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}; sleep 0.1)");
 		else
-			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}");
+			logs_commands+=("(${kubectl_cmd} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}; sleep 0.1)");
 		fi
 
 		# There are only 11 usable colors
