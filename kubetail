@@ -4,6 +4,8 @@ if hash kubectl 2>/dev/null; then
     KUBECTL_BIN=${KUBECTL_BIN:-"kubectl"}
 elif hash kubectl.exe 2>/dev/null; then
     KUBECTL_BIN=${KUBECTL_BIN:-"kubectl.exe"}
+elif hash microk8s 2>/dev/null; then
+    KUBECTL_BIN=${KUBECTL_BIN:-"microk8s kubectl"}
 elif ! hash ${KUBECTL_BIN}; then    
     echo >&2 "kubectl is not installed"
     exit 1
