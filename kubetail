@@ -1,6 +1,5 @@
 #!/bin/bash
-
-if [ -n "$KUBECTL_BIN" ]; then
+if [ -z "${KUBECTL_BIN}" ]; then
     if hash kubectl 2>/dev/null; then
         KUBECTL_BIN='kubectl'
     elif hash kubectl.exe 2>/dev/null; then
