@@ -17,7 +17,7 @@ It's also possible to install kubetail abbreviated to `kt` by using the `--with-
 
 	$ brew tap johanhaleby/kubetail && brew install kubetail --with-short-names
 
-Note that you may need to run `compinit` for zsh to pick-up the changes in competition after having upgraded from the the non abbreviated installation.
+Note that you may need to run `compinit` for zsh to pick-up the changes in competition after having upgraded from the non abbreviated installation.
 
 Use `brew install --HEAD kubetail` to install the latest (unreleased) version.
 
