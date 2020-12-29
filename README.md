@@ -122,6 +122,10 @@ To tail multiple applications at the same time seperate them by comma:
 For advanced matching you can use regular expressions:
 
 	$ kubetail "^app1|.*my-demo.*" --regex
+	
+To tail logs within a specific namespace, make sure to append the namespace flag *after* you have provided values for containers and applications:
+
+	$ kubetail app2 -c container1 -n namespace1
 
 Supply `-h` for help and additional options:
 
