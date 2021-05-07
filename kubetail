@@ -5,7 +5,7 @@ if [ -z "${KUBECTL_BIN}" ]; then
     elif hash kubectl.exe 2>/dev/null; then
         KUBECTL_BIN='kubectl.exe'
     elif hash microk8s 2>/dev/null; then
-        KUBECTL_BIN='microk8s kubectl'
+        KUBECTL_BIN='microk8s.kubectl'
     fi
 fi
 
