@@ -25,6 +25,7 @@ default_previous="${KUBETAIL_PREVIOUS:-false}"
 default_since="${KUBETAIL_SINCE:-10s}"
 default_namespace=$(calculate_default_namespace)
 default_follow="${KUBETAIL_FOLLOW:-true}"
+default_prefix="${KUBETAIL_PREFIX:-true}"
 default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
 default_colored_output="${KUBETAIL_COLORED_OUTPUT:-line}"
 default_timestamps="${KUBETAIL_TIMESTAMPS:-}"
@@ -35,6 +36,7 @@ default_show_color_index="${KUBETAIL_SHOW_COLOR_INDEX:-false}"
 
 namespace="${default_namespace}"
 follow="${default_follow}"
+prefix="${default_prefix}"
 line_buffered="${default_line_buffered}"
 colored_output="${default_colored_output}"
 timestamps="${default_timestamps}"
@@ -68,6 +70,7 @@ where:
     -n, --namespace         The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
     -f, --follow            Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run           Print the names of the matched pods and containers, then exit.
+    -P, --prefix            Specify if add the pod name prefix before each line. (true|false) Defaults to ${default_prefix}.
     -p, --previous          Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
     -s, --since             Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
     -b, --line-buffered     This flags indicates to use line-buffered. Defaults to false.
@@ -151,6 +154,11 @@ if [ "$#" -ne 0 ]; then
 		-f|--follow)
 			if [ "$2" = "false" ]; then
 				follow="false"
+			fi
+			;;
+		-P|--prefix)
+			if [ "$2" = "false" ]; then
+				prefix="false"
 			fi
 			;;
 		-b|--line-buffered)
@@ -299,7 +307,9 @@ for pod in ${matching_pods[@]}; do
 	fi
 
 	for container in ${pod_containers[@]}; do
-		if [ ${colored_output} == "false" ] || [ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ]; then
+		[ ${matching_pods_size} -eq 1 -a ${#pod_containers[@]} -eq 1 ] && single_stream="true" || single_stream="false"
+
+		if [ ${colored_output} == "false" ] || [ ${single_stream} == "true" ]; then
 			color_start=$(tput sgr0)
 			color_index_prefix=""
 		else
@@ -320,13 +330,20 @@ for pod in ${matching_pods[@]}; do
 			display_names_preview+=("$color_index_prefix${color_start}${display_name}${color_end}")
 		fi
 
-		if [ ${colored_output} == "false" ]; then
-			colored_line="[${display_name}] \$REPLY"
-		elif [ ${colored_output} == "pod" ]; then
-			colored_line="${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}]${color_end} \$REPLY"
+		if [ ${prefix} == "false" ] || [ ${single_stream} == "true" ]; then
+			prefix_line=""
 		else
-			# color_index_prefix=`if [ ${show_color_index} == "true" ]; then echo "${color_index}:"; else echo ""; fi`
-			colored_line="${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}] \$REPLY ${color_end}"
+			if [ ${colored_output} == "false" ]; then
+				prefix_line="[${display_name}] "
+			else
+				prefix_line="${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}]${color_end} "
+			fi
+		fi
+
+		if [ ${colored_output} == "false"  ] || [ ${colored_output} == "pod" ]; then
+			colored_line="${prefix_line}\$REPLY"
+		else
+			colored_line="${prefix_line}${color_start}\$REPLY${color_end}"
 		fi
 
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
