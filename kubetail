@@ -330,7 +330,7 @@ for pod in ${matching_pods[@]}; do
 			display_names_preview+=("$color_index_prefix${color_start}${display_name}${color_end}")
 		fi
 
-		if [ ${prefix} == "false" ] || [ ${single_stream} == "true" ]; then
+		if [ ${prefix} == "false" ]; then
 			prefix_line=""
 		else
 			if [ ${colored_output} == "false" ]; then
