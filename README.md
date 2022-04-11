@@ -157,8 +157,11 @@ If you're not using iTerm2 or think that kubetail is lacking in features there's
 
 kubetail can take default option values from environment variables matching the option name.
 
+    KUBETAIL_PREVIOUS
     KUBETAIL_SINCE
     KUBETAIL_NAMESPACE
+    KUBETAIL_FOLLOW
+    KUBETAIL_PREFIX
     KUBETAIL_LINE_BUFFERED
     KUBETAIL_COLORED_OUTPUT
     KUBETAIL_TIMESTAMPS
