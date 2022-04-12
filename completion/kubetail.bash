@@ -1,6 +1,6 @@
 _findnamespace(){
     local next="0"
-    local namespace="";
+    local namespace="$KUBETAIL_NAMESPACE";
     for wo in "${COMP_WORDS[@]}"
     do
         if [ "$next" = "0" ]; then
