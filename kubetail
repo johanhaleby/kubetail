@@ -1,24 +1,24 @@
 #!/bin/bash
 if [ -z "${KUBECTL_BIN}" ]; then
-    if hash kubectl 2>/dev/null; then
-        KUBECTL_BIN='kubectl'
-    elif hash kubectl.exe 2>/dev/null; then
-        KUBECTL_BIN='kubectl.exe'
-    elif hash microk8s 2>/dev/null; then
-        KUBECTL_BIN='microk8s.kubectl'
-    fi
+	if hash kubectl 2>/dev/null; then
+		KUBECTL_BIN='kubectl'
+	elif hash kubectl.exe 2>/dev/null; then
+		KUBECTL_BIN='kubectl.exe'
+	elif hash microk8s 2>/dev/null; then
+		KUBECTL_BIN='microk8s.kubectl'
+	fi
 fi
 
-if ! hash "${KUBECTL_BIN}"; then    
-    echo >&2 "kubectl is not installed"
-    exit 1
+if ! hash "${KUBECTL_BIN}"; then
+	echo >&2 "kubectl is not installed"
+	exit 1
 fi
 
 readonly PROGNAME=$(basename $0)
 
 calculate_default_namespace() {
-    local config_namespace=$(${KUBECTL_BIN} config view --minify --output 'jsonpath={..namespace}')
-    echo "${KUBETAIL_NAMESPACE:-${config_namespace:-default}}"
+	local config_namespace=$(${KUBECTL_BIN} config view --minify --output 'jsonpath={..namespace}')
+	echo "${KUBETAIL_NAMESPACE:-${config_namespace:-default}}"
 }
 
 default_previous="${KUBETAIL_PREVIOUS:-false}"
@@ -47,7 +47,7 @@ show_color_index="${default_show_color_index}"
 
 if [[ ${1} != -* ]]
 then
-    pod="${1}"
+	pod="${1}"
 fi
 containers=()
 selector=()
@@ -59,39 +59,39 @@ dryrun=false
 cluster=""
 namespace_arg="-n ${default_namespace}"
 
-usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-d] [-p] [-s] [-b] [-k] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
+usage="${PROGNAME} <search term> [-h] [-c] [-n] [-t] [-l] [-f] [-d] [-P] [-p] [-s] [-b] [-e] [-j] [-k] [-z] [-v] [-r] [-i] -- tail multiple Kubernetes pod logs at the same time
 
 where:
-    -h, --help              Show this help text
+    -h, --help              Show this help text.
     -c, --container         The name of the container to tail in the pod (if multiple containers are defined in the pod).
                             Defaults to all containers in the pod. Can be used multiple times.
     -t, --context           The k8s context. ex. int1-context. Relies on ~/.kube/config for the contexts.
     -l, --selector          Label selector. If used the pod name is ignored.
-    -n, --namespace         The Kubernetes namespace where the pods are located (defaults to \"${default_namespace}\")
+    -n, --namespace         The Kubernetes namespace where the pods are located. Defaults to \"${default_namespace}\".
     -f, --follow            Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run           Print the names of the matched pods and containers, then exit.
     -P, --prefix            Specify if add the pod name prefix before each line. (true|false) Defaults to ${default_prefix}.
     -p, --previous          Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
     -s, --since             Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
-    -b, --line-buffered     This flags indicates to use line-buffered. Defaults to false.
-    -e, --regex             The type of name matching to use (regex|substring)
-    -j, --jq                If your output is json - use this jq-selector to parse it.
+    -b, --line-buffered     This flags indicates to use line-buffered. (true|false) Defaults to ${default_line_buffered:-false}.
+    -e, --regex             The type of name matching to use (regex|substring). Defaults to ${regex}.
+    -j, --jq                If your output is json - use this jq-selector to parse it. Defaults to \"${default_jq_selector}\".
                             example: --jq \".logger + \\\" \\\" + .message\"
     -k, --colored-output    Use colored output (pod|line|false).
                             pod = only color pod name, line = color entire line, false = don't use any colors.
                             Defaults to ${default_colored_output}.
-    -z, --skip-colors       Comma-separated list of colors to not use in output
-                            If you have green foreground on black, this will skip dark grey and some greens -z 2,8,10
-                            Defaults to: ${default_skip_colors}
-        --timestamps        Show timestamps for each log line
+    -z, --skip-colors       Comma-separated list of colors to not use in output.
+                            If you have green foreground on black, this will skip dark grey and some greens: -z 2,8,10
+                            Defaults to: ${default_skip_colors}.
+        --timestamps        Show timestamps for each log line. (true|false) Defaults to ${default_timestamps:-false}.
         --tail              Lines of recent log file to display. Defaults to ${default_tail}, showing all log lines.
-    -v, --version           Prints the kubetail version
+    -v, --version           Prints the kubetail version.
     -r, --cluster           The name of the kubeconfig cluster to use.
-    -i, --show-color-index  Show the color index before the pod name prefix that is shown before each log line. 
-    						Normally only the pod name is added as a prefix before each line, for example \"[app-5b7ff6cbcd-bjv8n]\", 
-    						but if \"show-color-index\" is true then color index is added as well: \"[1:app-5b7ff6cbcd-bjv8n]\".
+    -i, --show-color-index  Show the color index before the pod name prefix that is shown before each log line.
+                            Normally only the pod name is added as a prefix before each line, for example \"[app-5b7ff6cbcd-bjv8n]\",
+                            but if \"show-color-index\" is true then color index is added as well: \"[1:app-5b7ff6cbcd-bjv8n]\".
                             This is useful if you have color blindness or if you want to know which colors to exclude (see \"--skip-colors\").
-                           	Defaults to ${default_show_color_index}.
+                            Defaults to ${default_show_color_index}.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -118,7 +118,11 @@ if [ "$#" -ne 0 ]; then
 			containers+=("$2")
 			;;
 		-e|--regex)
-			regex="regex"
+			if [ "$2" = "substring" ]; then
+				regex="substring"
+			else
+				regex="regex"
+			fi
 			;;
 		-t|--context)
 			context="$2"
@@ -134,7 +138,11 @@ if [ "$#" -ne 0 ]; then
 			dryrun=true
 			;;
 		-p|--previous)
-			previous=true
+			if [ "$2" = "false" ]; then
+				previous="false"
+			else
+				previous="true"
+			fi
 			;;
 		-s|--since)
 			if [ -z "$2" ]; then
@@ -154,15 +162,21 @@ if [ "$#" -ne 0 ]; then
 		-f|--follow)
 			if [ "$2" = "false" ]; then
 				follow="false"
+			else
+				follow="true"
 			fi
 			;;
 		-P|--prefix)
 			if [ "$2" = "false" ]; then
 				prefix="false"
+			else
+				prefix="true"
 			fi
 			;;
 		-b|--line-buffered)
-			if [ "$2" = "true" ]; then
+			if [ "$2" = "false" ]; then
+				line_buffered=""
+			else
 				line_buffered="| grep - --line-buffered"
 			fi
 			;;
@@ -189,23 +203,23 @@ if [ "$#" -ne 0 ]; then
 			;;
 		--timestamps)
 			if [ "$2" = "false" ]; then
-			    timestamps="$1=$2"
+					timestamps="$1=$2"
 			else
-			    timestamps="$1"
+					timestamps="$1"
 			fi
 			;;
 		--tail)
 			if [ -z "$2" ]; then
-			    tail="${default_tail}"
+					tail="${default_tail}"
 			else
-			    tail="$2"
+					tail="$2"
 			fi
 			;;
 		-i|--show-color-index)
 			if [ -z "$2" ]; then
-			    show_color_index="${default_show_color_index}"
+					show_color_index="${default_show_color_index}"
 			else
-			    show_color_index="$2"
+					show_color_index="$2"
 			fi
 			;;
 		--)
@@ -216,7 +230,7 @@ if [ "$#" -ne 0 ]; then
 			exit 1
 			;;
 		# an option argument, continue
-		*)  ;;
+		*) ;;
 		esac
 		shift
 	done
@@ -340,7 +354,7 @@ for pod in ${matching_pods[@]}; do
 			fi
 		fi
 
-		if [ ${colored_output} == "false"  ] || [ ${colored_output} == "pod" ]; then
+		if [ ${colored_output} == "false" ] || [ ${colored_output} == "pod" ]; then
 			colored_line="${prefix_line}\$REPLY"
 		else
 			colored_line="${prefix_line}${color_start}\$REPLY${color_end}"
@@ -367,7 +381,7 @@ done
 
 if [[ ${dryrun} == true ]];
 then
-  exit 0
+	exit 0
 fi
 
 # Join all log commands into one string separated by " & "
