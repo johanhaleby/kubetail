@@ -21,13 +21,17 @@ calculate_default_namespace() {
 	echo "${KUBETAIL_NAMESPACE:-${config_namespace:-default}}"
 }
 
+# Sets default color ouput to 'false' if output is not a terminal
+terminal_aware_default_color=line
+[ ! -t 1 ] && terminal_aware_default_color=false
+
 default_previous="${KUBETAIL_PREVIOUS:-false}"
 default_since="${KUBETAIL_SINCE:-10s}"
 default_namespace=$(calculate_default_namespace)
 default_follow="${KUBETAIL_FOLLOW:-true}"
 default_prefix="${KUBETAIL_PREFIX:-true}"
 default_line_buffered="${KUBETAIL_LINE_BUFFERED:-}"
-default_colored_output="${KUBETAIL_COLORED_OUTPUT:-line}"
+default_colored_output="${KUBETAIL_COLORED_OUTPUT:-$terminal_aware_default_color}"
 default_timestamps="${KUBETAIL_TIMESTAMPS:-}"
 default_jq_selector="${KUBETAIL_JQ_SELECTOR:-}"
 default_skip_colors="${KUBETAIL_SKIP_COLORS:-7,8}"
