@@ -245,12 +245,23 @@ fi
 
 # Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
-	# $1 is return variable name
-	# $2 is sep
-	# $3... are the elements to join
-	local retname=$1 sep=$2 ret=$3
-	shift 3 || shift $(($#))
-	printf -v "$retname" "%s" "$ret${@/#/$sep}"
+	# $1 is sep
+	# $2... are the elements to join
+	local sep="$1"
+	shift
+
+	local F=0
+	for x in "$@"
+	do
+		if [[ F -eq 1 ]]
+			then
+				echo -n "$sep"
+			else
+				F=1
+			fi
+			echo -n "$x"
+	done
+	echo
 }
 
 # Check if pod query contains a comma and we've not specified "regex" explicitly,
@@ -261,7 +272,7 @@ if [[ "${pod}" = *","* ]] && [ ! "${regex}" == 'regex' ]; then
 	IFS=',' read -r -a pods_to_match <<< "${pod}"
 
 	# Join all pod names into a string with ".*|.*" as delimiter
-	join pod ".*|.*" "${pods_to_match[@]}"
+	pod=$(join ".*|.*" "${pods_to_match[@]}")
 
 	# Prepend and initial ".*" and and append the last ".*"
 	pod=".*${pod}.*"
@@ -389,7 +400,7 @@ then
 fi
 
 # Join all log commands into one string separated by " & "
-join command_to_tail " & " "${logs_commands[@]}"
+command_to_tail=$(join " & " "${logs_commands[@]}")
 
 # Aggregate all logs and print to stdout
 # Note that tail +1f doesn't work on some Linux distributions so we use this slightly longer alternative
