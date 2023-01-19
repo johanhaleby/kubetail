@@ -421,4 +421,5 @@ if [[ ${follow} == false ]];
 then
 	tail_follow_command=""
 fi
-tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+# tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+lnav <( eval "${command_to_tail}" )
