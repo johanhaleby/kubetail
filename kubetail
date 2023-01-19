@@ -74,6 +74,7 @@ where:
     -n, --namespace         The Kubernetes namespace where the pods are located. Defaults to \"${default_namespace}\".
     -f, --follow            Specify if the logs should be streamed. (true|false) Defaults to ${default_follow}.
     -d, --dry-run           Print the names of the matched pods and containers, then exit.
+    -q, --quiet             Suppress kubetail info messages, only stream logs.
     -P, --prefix            Specify if add the pod name prefix before each line. (true|false) Defaults to ${default_prefix}.
     -p, --previous          Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
     -s, --since             Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
@@ -140,6 +141,13 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-d|--dry-run)
 			dryrun=true
+			;;
+		-q|--quiet)
+			if [ "$2" = "true" ]; then
+				quiet="true"
+			else
+				quiet="false"
+			fi
 			;;
 		-p|--previous)
 			if [ "$2" = "false" ]; then
@@ -283,7 +291,7 @@ fi
 
 grep_matcher=''
 if [ "${regex}" == 'regex' ]; then
-	echo "Using regex '${pod}' to match pods"
+	[[ "${quiet}" != 'true' ]] && echo "Using regex '${pod}' to match pods"
 	grep_matcher='-E'
 fi
 
@@ -389,10 +397,13 @@ for pod in ${matching_pods[@]}; do
 done
 
 # Preview pod colors
-echo "Will tail ${#display_names_preview[@]} logs..."
-for preview in "${display_names_preview[@]}"; do
-	echo "$preview"
-done
+if [ "${quiet}" != 'true' ]; then
+	echo "Will tail ${#display_names_preview[@]} logs..."
+	for preview in "${display_names_preview[@]}"; do
+		echo "$preview"
+	done
+fi
+
 
 if [[ ${dryrun} == true ]];
 then
