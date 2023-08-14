@@ -330,7 +330,7 @@ all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${contex
 
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
-		pod_containers=($(echo -e "$all_pods_containers" | grep $pod | cut -d ' ' -f2- | xargs -n1))
+		pod_containers=($(echo -e "$all_pods_containers" | grep "$pod " | cut -d ' ' -f2- | xargs -n1))
 	else
 		pod_containers=("${containers[@]}")
 	fi
