@@ -328,6 +328,10 @@ trap kill_kubectl_processes EXIT
 all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
 
 
+# Generate temp file used to restart tail if a watched pod restarts
+TMPFILE_RESTART=`mktemp`
+rm $TMPFILE_RESTART
+
 for pod in ${matching_pods[@]}; do
 	if [ ${#containers[@]} -eq 0 ]; then
 		pod_containers=($(echo -e "$all_pods_containers" | grep "$pod " | cut -d ' ' -f2- | xargs -n1))
@@ -378,7 +382,7 @@ for pod in ${matching_pods[@]}; do
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
 		if [ "z" == "z$jq_selector" ]; then
-			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
+			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd} && touch $TMPFILE_RESTART");
 		else
 			logs_commands+=("${kubectl_cmd} | jq --unbuffered -r -R --stream '. as \$line | try (fromjson | $jq_selector) catch \$line' | ${colorify_lines_cmd}");
 		fi
@@ -410,4 +414,37 @@ if [[ ${follow} == false ]];
 then
 	tail_follow_command=""
 fi
-tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+
+# loop forever, restarting tail if kubetail exits
+#while(true); do
+	# Prep
+	# ... if tail is restarting, we should reset some values here first
+	# (todo)
+
+	# Start tail command in a separate process and track PID so we can take action if a pod exits
+	tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered > /proc/$$/fd/1 &
+	PID_TAIL=$!
+
+	# Idle processing loop
+	while (true); do
+		# Check if a pod has been deleted
+		if [ -f $TMPFILE_RESTART ]; then
+			# Cleanup tmp file used to signal pod deletion
+			rm $TMPFILE_RESTART;
+
+			# Exit idle process loop
+			break;
+		fi;
+
+		# Check if new pods have been created we should also tail
+		# (todo)
+
+
+		# Avoid max cpu, delay a bit before performing next check
+		sleep 1;
+	done
+  
+	# A pod being tailed has been deleted, take action: stop tail
+	disown $PID_TAIL;
+	kill $PID_TAIL;
+#done
