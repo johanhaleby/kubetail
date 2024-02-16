@@ -22,8 +22,11 @@ calculate_default_namespace() {
 }
 
 # Sets default color ouput to 'false' if output is not a terminal
-terminal_aware_default_color=line
-[ ! -t 1 ] && terminal_aware_default_color=false
+if [ -n "$(tput colors)" ] && [ "$(tput colors)" -ge 8 ]; then
+    terminal_aware_default_color=line
+else
+    terminal_aware_default_color=false
+fi
 
 default_previous="${KUBETAIL_PREVIOUS:-false}"
 default_since="${KUBETAIL_SINCE:-10s}"
