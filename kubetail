@@ -80,7 +80,9 @@ where:
     -P, --prefix            Specify if add the pod name prefix before each line. (true|false) Defaults to ${default_prefix}.
     -p, --previous          Return logs for the previous instances of the pods, if available. (true|false) Defaults to ${default_previous}.
     -s, --since             Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to ${default_since}.
-    -b, --line-buffered     This flags indicates to use line-buffered. (true|false) Defaults to ${default_line_buffered:-false}.
+    -b, --line-buffered     Controls if lines should be buffered (true|false). Defaults to ${default_line_buffered:-true}.
+                            It can be useful to disable this if you're piping to e.g. sed/awk/grep and $PROGNAME doesn't generate enough data
+                            for sed/awk/grep to output it immediately.
     -e, --regex             The type of name matching to use (regex|substring). Defaults to ${regex}.
     -j, --jq                If your output is json - use this jq-selector to parse it. Defaults to \"${default_jq_selector}\".
                             example: --jq \".logger + \\\" \\\" + .message\"
@@ -182,9 +184,9 @@ if [ "$#" -ne 0 ]; then
 			;;
 		-b|--line-buffered)
 			if [ "$2" = "false" ]; then
-				line_buffered=""
+				line_buffered="false"
 			else
-				line_buffered="| grep - --line-buffered"
+				line_buffered="$2"
 			fi
 			;;
 		-k|--colored-output)
@@ -413,4 +415,17 @@ if [[ ${follow} == false ]];
 then
 	tail_follow_command=""
 fi
-tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" ) $line_buffered
+
+
+command_to_run="tail ${tail_follow_command} -n +1 <( eval "${command_to_tail}" )"
+
+if [ "${line_buffered}" == "false" ]; then
+	distro="$(uname)"
+	if [[ "$distro" == "Darwin" || "$distro" == "FreeBSD" ]]; then
+	    command_to_run="script -q /dev/null ${command_to_run}"
+	else # Linux etc
+	    command_to_run="script -q -c '${command_to_run}' /dev/null"
+	fi
+fi
+
+eval "${command_to_run}"
