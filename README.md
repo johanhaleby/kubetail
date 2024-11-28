@@ -11,11 +11,11 @@ Just download the [kubetail](https://raw.githubusercontent.com/johanhaleby/kubet
 
 You can also install kubetail using [brew](https://brew.sh/):
 
-	$ brew tap johanhaleby/kubetail && brew install johanhaleby/kubetail/kubetail
+	$ brew install johanhaleby/kubetail/kubetail
 
 It's also possible to install kubetail abbreviated to `kt` by using the `--with-short-names` suffix:
 
-	$ brew tap johanhaleby/kubetail && brew install johanhaleby/kubetail/kubetail --with-short-names
+	$ brew install johanhaleby/kubetail/kubetail --with-short-names
 
 Note that you may need to run `compinit` for zsh to pick-up the changes in competition after having upgraded from the non abbreviated installation.
 
