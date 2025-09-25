@@ -381,7 +381,31 @@ for pod in ${matching_pods[@]}; do
 		fi
 
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
-		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
+
+		# Enhanced colorify_lines_cmd with log level detection
+		colorify_lines_cmd="while read -r; do
+			# Create clean prefix without original pod colors for log level coloring
+			clean_prefix=\"[${display_name}] \"
+
+			# Apply log level colorization to both prefix and log content
+			if echo \"\$REPLY\" | grep -qE '\\b(INFO|info)\\b'; then
+				# INFO: plain white (default terminal color)
+				colored_line=\"\$clean_prefix\$REPLY\"
+			elif echo \"\$REPLY\" | grep -qE '\\b(WARN|warn|WARNING|warning)\\b'; then
+				# WARN: dark yellow for entire line
+				colored_line=\"\$(tput setaf 3)\$clean_prefix\$REPLY\$(tput sgr0)\"
+			elif echo \"\$REPLY\" | grep -qE '\\b(ERROR|error|ERR|err)\\b'; then
+				# ERROR: dark red for entire line
+				colored_line=\"\$(tput setaf 1)\$clean_prefix\$REPLY\$(tput sgr0)\"
+			elif echo \"\$REPLY\" | grep -qE '\\b(SUCCESS|success)\\b'; then
+				# SUCCESS: dark green for entire line
+				colored_line=\"\$(tput setaf 2)\$clean_prefix\$REPLY\$(tput sgr0)\"
+			else
+				# Default: use original colored line with pod colors
+				colored_line=\"$colored_line\"
+			fi
+			echo \"\$colored_line\" | tail -n +1
+		done"
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
 		else
