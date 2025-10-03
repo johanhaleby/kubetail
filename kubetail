@@ -86,8 +86,8 @@ where:
     -e, --regex             The type of name matching to use (regex|substring). Defaults to ${regex}.
     -j, --jq                If your output is json - use this jq-selector to parse it. Defaults to \"${default_jq_selector}\".
                             example: --jq \".logger + \\\" \\\" + .message\"
-    -k, --colored-output    Use colored output (pod|line|false).
-                            pod = only color pod name, line = color entire line, false = don't use any colors.
+    -k, --colored-output    Use colored output (pod|line|loglevel|false).
+                            pod = only color pod name, line = color entire line, loglevel = color pod name + log content based on log levels, false = don't use any colors.
                             Defaults to ${default_colored_output}.
     -z, --skip-colors       Comma-separated list of colors to not use in output.
                             If you have green foreground on black, this will skip dark grey and some greens: -z 2,8,10
@@ -248,6 +248,12 @@ else
 	exit 1
 fi
 
+# Validate colored_output option
+if [ "$colored_output" != "pod" ] && [ "$colored_output" != "line" ] && [ "$colored_output" != "loglevel" ] && [ "$colored_output" != "false" ]; then
+	echo "Invalid colored output option: $colored_output. Valid options are: pod, line, loglevel, false"
+	exit 1
+fi
+
 # Join function that supports a multi-character separator (copied from http://stackoverflow.com/a/23673883/398441)
 function join() {
 	# $1 is sep
@@ -381,7 +387,38 @@ for pod in ${matching_pods[@]}; do
 		fi
 
 		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
-		colorify_lines_cmd="while read -r; do echo \"$colored_line\" | tail -n +1; done"
+
+		if [ ${colored_output} == "loglevel" ]; then
+			# Log level based coloring with colored pod names
+			colorify_lines_cmd="while read -r; do
+				# Create colored prefix similar to pod mode
+				colored_prefix=\"${color_start}[${color_end}${color_index_prefix}${color_start}${display_name}]${color_end} \"
+
+				# Apply log level colorization to log content only, keeping pod name colored
+				if echo \"\$REPLY\" | grep -qE '\\b(INFO|info)\\b'; then
+					# INFO: plain white (default terminal color) for log content
+					colored_line=\"\$colored_prefix\$REPLY\"
+				elif echo \"\$REPLY\" | grep -qE '\\b(WARN|warn|WARNING|warning)\\b'; then
+					# WARN: dark yellow for log content
+					colored_line=\"\$colored_prefix\$(tput setaf 3)\$REPLY\$(tput sgr0)\"
+				elif echo \"\$REPLY\" | grep -qE '\\b(ERROR|error|ERR|err)\\b'; then
+					# ERROR: dark red for log content
+					colored_line=\"\$colored_prefix\$(tput setaf 1)\$REPLY\$(tput sgr0)\"
+				elif echo \"\$REPLY\" | grep -qE '\\b(SUCCESS|success)\\b'; then
+					# SUCCESS: dark green for log content
+					colored_line=\"\$colored_prefix\$(tput setaf 2)\$REPLY\$(tput sgr0)\"
+				else
+					# Default: plain log content with colored pod name
+					colored_line=\"\$colored_prefix\$REPLY\"
+				fi
+				echo \"\$colored_line\" | tail -n +1
+			done"
+		else
+			# Original coloring logic for pod/line/false modes
+			colorify_lines_cmd="while read -r; do
+				echo \"$colored_line\" | tail -n +1
+			done"
+		fi
 		if [ "z" == "z$jq_selector" ]; then
 			logs_commands+=("${kubectl_cmd} ${timestamps} | ${colorify_lines_cmd}");
 		else
