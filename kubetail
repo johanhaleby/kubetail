@@ -101,6 +101,8 @@ where:
                             but if \"show-color-index\" is true then color index is added as well: \"[1:app-5b7ff6cbcd-bjv8n]\".
                             This is useful if you have color blindness or if you want to know which colors to exclude (see \"--skip-colors\").
                             Defaults to ${default_show_color_index}.
+    --as                    Specify the user to impersonate at the kubectl level.
+    --as-group              Specify the group to impersonate at the kubectl level.
 
 examples:
     ${PROGNAME} my-pod-v1
@@ -231,6 +233,20 @@ if [ "$#" -ne 0 ]; then
 					show_color_index="$2"
 			fi
 			;;
+		--as)
+			if [ -z "$2" ]; then
+					as_user=""
+			else
+					as_user="$2"
+			fi
+			;;
+		--as-group)
+			if [ -z "$2" ]; then
+					as_group=""
+			else
+					as_group="$2"
+			fi
+			;;
 		--)
 			break
 			;;
@@ -299,7 +315,7 @@ if [ "${regex}" == 'regex' ]; then
 fi
 
 # Get all pods matching the input and put them in an array. If no input then all pods are matched.
-matching_pods=(`${KUBECTL_BIN} get pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --field-selector=status.phase=Running --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep --color=never $grep_matcher "${pod}"`)
+matching_pods=(`${KUBECTL_BIN} get ${as_user:+--as=${as_user}} ${as_group:+--as-group=${as_group}} pods ${context:+--context=${context}} "${selector[@]}" ${namespace_arg} ${cluster} --field-selector=status.phase=Running --output=jsonpath='{.items[*].metadata.name}' | xargs -n1 | grep --color=never $grep_matcher "${pod}"`)
 matching_pods_size=${#matching_pods[@]}
 
 if [ ${matching_pods_size} -eq 0 ]; then
@@ -336,7 +352,7 @@ function kill_kubectl_processes {
 trap kill_kubectl_processes EXIT
 
 # Putting all needed values in a variable so that multiple requests to Kubernetes api can be avoided, thus making it faster
-all_pods_containers=$(echo -e `${KUBECTL_BIN} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
+all_pods_containers=$(echo -e `${KUBECTL_BIN} ${as_user:+--as=${as_user}} ${as_group:+--as-group=${as_group}} get pods ${namespace_arg} ${context:+--context=${context}} --output=jsonpath="{range .items[*]}{.metadata.name} {.spec['containers', 'initContainers'][*].name} \n{end}"`)
 
 
 for pod in ${matching_pods[@]}; do
@@ -386,7 +402,7 @@ for pod in ${matching_pods[@]}; do
 			colored_line="${prefix_line}${color_start}\$REPLY${color_end}"
 		fi
 
-		kubectl_cmd="${KUBECTL_BIN} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
+		kubectl_cmd="${KUBECTL_BIN} ${as_user:+--as=${as_user}} ${as_group:+--as-group=${as_group}} ${context:+--context=${context}} logs ${pod} ${container} -f=${follow} --previous=${previous} --since=${since} --tail=${tail} ${namespace_arg} ${cluster}"
 
 		if [ ${colored_output} == "loglevel" ]; then
 			# Log level based coloring with colored pod names
