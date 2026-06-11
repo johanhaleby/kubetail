@@ -115,7 +115,7 @@ You can repeat `-c` to tail multiple specific containers:
 
 	$ kubetail app2 -c container1 -c container2
 
-To tail multiple applications at the same time seperate them by comma:
+To tail multiple applications at the same time separate them by comma:
 
 	$ kubetail app1,app2
 
@@ -145,7 +145,7 @@ Example:
 
 	$ kubetail app2 -k false
 
-If you find that some colors are difficult to see then they can be skipped by supplying the color index either to the `-z` flag or by setting the `KUBETAIL_SKIP_COLORS` environment variable (either choice could be comma seperated). To find the color index you'd like to skip more easily, set the `-i` flag to `true` (`-i true`) or set the `KUBETAIL_SHOW_COLOR_INDEX` environment variable to `true` (`KUBETAIL_SHOW_COLOR_INDEX=true`). This will print the color index as a prefix to the pod name (e.g. `[3:my-pod-12341] some log` where `3` is the index of the color). This is also helpful if you suffer from color blindness since the index will always be printed with the default terminal color.
+If you find that some colors are difficult to see then they can be skipped by supplying the color index either to the `-z` flag or by setting the `KUBETAIL_SKIP_COLORS` environment variable (either choice could be comma separated). To find the color index you'd like to skip more easily, set the `-i` flag to `true` (`-i true`) or set the `KUBETAIL_SHOW_COLOR_INDEX` environment variable to `true` (`KUBETAIL_SHOW_COLOR_INDEX=true`). This will print the color index as a prefix to the pod name (e.g. `[3:my-pod-12341] some log` where `3` is the index of the color). This is also helpful if you suffer from color blindness since the index will always be printed with the default terminal color.
 	
 ## Filtering / Highlighting etc
 
