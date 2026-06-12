@@ -276,7 +276,7 @@ function join() {
 }
 
 # Check if pod query contains a comma and we've not specified "regex" explicitly,
-# if so we convert the pod query string into a regex that matches all pods seperated by the comma
+# if so we convert the pod query string into a regex that matches all pods separated by the comma
 if [[ "${pod}" = *","* ]] && [ ! "${regex}" == 'regex' ]; then
 
 	# Split the supplied query string (in variable pod) by comma into an array named "pods_to_match"
